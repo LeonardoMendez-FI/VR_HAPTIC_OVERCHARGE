@@ -99,7 +99,7 @@ public class GazeManager : ManagerScript
         OnGazeFocusProgress?.Invoke(FocusProgress);
 
         // ── 6. Run ALL actors (non-exclusive) ─────────────────────────────────
-        foreach (IActorScript actor in actors)
+        foreach (ActorBase actor in actors)
         {
             if (actor != null)
                 actor.Solve();

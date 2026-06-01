@@ -7,9 +7,9 @@ public class ManagerScript : MonoBehaviour
     public ElectronicObject electronicObject;
 
     [Header("Actors")]
-    public List<IActorScript> actors = new();
+    public List<ActorBase> actors = new();
 
-    protected IActorScript current_actor = null;
+    protected ActorBase current_actor = null;
 
     public virtual void Update()
     {
@@ -21,7 +21,7 @@ public class ManagerScript : MonoBehaviour
 
         current_actor = null;
 
-        foreach (IActorScript actor in actors)
+        foreach (ActorBase actor in actors)
         {
             if (actor.Solve())
             {

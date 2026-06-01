@@ -44,10 +44,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e77812f3c48e9934382b00fb87fd018e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  electronicObject: {fileID: 5271733315070999949}
+  electronicObject: {fileID: 0}
   actors: []
   is_attacking: 0
   target: {fileID: 0}
+  OnEliminationCountChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  OnObjectiveCountChanged:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &2553952499577626607
 GameObject:
   m_ObjectHideFlags: 0
@@ -93,9 +99,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef754a91f64d73f4ab9cad1b6acf3026, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnergyManager
-  electronicObject: {fileID: 5271733315070999949}
+  electronicObject: {fileID: 0}
   actors: []
   energy_multiplier: 1
+  showDebug: 0
+  OnEnergyChanged:
+    m_PersistentCalls:
+      m_Calls: []
   curr_energy: 0
   max_energy: 0
 --- !u!1 &2912282783169889702
@@ -107,6 +117,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4509267471035957851}
+  - component: {fileID: 4432679590505356347}
   m_Layer: 0
   m_Name: MoveManager
   m_TagString: Untagged
@@ -129,6 +140,36 @@ Transform:
   m_Children: []
   m_Father: {fileID: 213273702645020089}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4432679590505356347
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2912282783169889702}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 735a9597ec296c448bfb3efa1a697c87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  electronicObject: {fileID: 1949722239818426278}
+  actors: []
+  OnFlightModeChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  linear_multiplier: 0.7
+  angular_multiplier: 0.7
+  max_linear_speed: 0
+  max_angular_speed: 0
+  inputManager: {fileID: 0}
+  playerRigidbody: {fileID: 0}
+  playerTransform: {fileID: 0}
+  groundCheckDistance: 0.2
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  isFlying: 0
+  isAttacking: 0
 --- !u!1 &4548074676092496697
 GameObject:
   m_ObjectHideFlags: 0
@@ -236,6 +277,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63692e742a1bc0041bcdd21de8ca84a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StructManager
+  electronicObject: {fileID: 0}
+  actors: []
+  OnStructureChanged:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &9077092117142058385
 GameObject:
   m_ObjectHideFlags: 0
@@ -245,7 +291,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 213273702645020089}
-  - component: {fileID: 5271733315070999949}
+  - component: {fileID: 1949722239818426278}
   m_Layer: 0
   m_Name: ENMYManagers
   m_TagString: Untagged
@@ -272,7 +318,7 @@ Transform:
   - {fileID: 2002319631182804777}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5271733315070999949
+--- !u!114 &1949722239818426278
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -283,8 +329,8 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c3c3e680fd7fba04cb3f2d186b686788, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Robot
+  m_EditorClassIdentifier: 
   energyManager: {fileID: 2457689117625278576}
   structManager: {fileID: 5159092650050298095}
-  moveManager: {fileID: 0}
+  moveManager: {fileID: 4432679590505356347}
   attackManager: {fileID: 9039809382694786759}

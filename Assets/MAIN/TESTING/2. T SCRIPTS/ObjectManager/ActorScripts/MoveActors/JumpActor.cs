@@ -6,12 +6,7 @@ public class JumpActor : MoveActor
     [Range(0, 2)] public float jumpForceMultiplier = 1f;
 
     private float jumpForce;
-
-    [Header("Ground Check")]
-    public float groundCheckDistance = 0.2f;
-    public LayerMask groundLayers = ~0;
-
-    private bool isGrounded;
+    private float verticalVelocity;
 
     protected override void Start()
     {
@@ -28,15 +23,25 @@ public class JumpActor : MoveActor
     {
         if (rb == null) return;
 
-        Vector3 rayOrigin = playerTransform.position + Vector3.up * 0.1f;
-        isGrounded = Physics.Raycast(rayOrigin, Vector3.down, groundCheckDistance + 0.1f, groundLayers);
+        // Usar el ground check del MoveManager (única fuente de verdad)
+        bool isGrounded = moveManager.IsGrounded();
+
+        if (isGrounded)
+        {
+            verticalVelocity = 0f;
+        }
+        else
+        {
+            verticalVelocity += PlayerParameters.GRAVITY * Time.deltaTime;
+        }
 
         if (input.JumpPressed && isGrounded)
         {
-            Vector3 vel = rb.linearVelocity;
-            vel.y = jumpForce;
-            rb.linearVelocity = vel;
-            isGrounded = false;
+            verticalVelocity = jumpForce;
         }
+
+        Vector3 vel = rb.linearVelocity;
+        vel.y = verticalVelocity;
+        rb.linearVelocity = vel;
     }
 }

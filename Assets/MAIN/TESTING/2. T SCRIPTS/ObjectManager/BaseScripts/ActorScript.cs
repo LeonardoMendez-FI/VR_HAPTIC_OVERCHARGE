@@ -1,14 +1,14 @@
 using UnityEngine;
 
 [System.Serializable]
-public abstract class ActorScript<TManager> : IActorScript
+public abstract class ActorScript<TManager> : ActorBase
     where TManager : ManagerScript
 {
 
     public TManager managerScript;
 
     public override bool MeetsRequirements(){
-        return managerScript != null || managerScript.electronicObject != null;
+        return managerScript != null && managerScript.electronicObject != null;
     }
     public override bool Solve(){
         

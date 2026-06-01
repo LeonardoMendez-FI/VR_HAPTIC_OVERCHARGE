@@ -1,114 +1,204 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Events;
 
 public class InputManager : MonoBehaviour
 {
+    [Header("Haptic Manager (opcional)")]
+    public HapticManager hapticManager;
+
+    [Header("Move Manager (para conocer modo vuelo/suelo)")]
+    public MoveManager moveManager;
+
     [Header("Detección de doble pulsación")]
-    public KeyCode flightKey = KeyCode.Space;
-    public KeyCode landKey = KeyCode.Tab;
     public float doubleTapThreshold = 0.3f;
 
     [Header("Eventos de cambio de modo")]
     public UnityEvent OnFlightRequested;
     public UnityEvent OnLandRequested;
 
-    [Header("Teclas de propulsión (vuelo)")]
-    public KeyCode forwardKey1 = KeyCode.W;        // W
-    public KeyCode forwardKey2 = KeyCode.UpArrow;   // ↑
-    public KeyCode backwardKey1 = KeyCode.S;        // S
-    public KeyCode backwardKey2 = KeyCode.DownArrow; // ↓
-    public KeyCode leftKey1 = KeyCode.A;            // A
-    public KeyCode leftKey2 = KeyCode.LeftArrow;    // ←
-    public KeyCode rightKey1 = KeyCode.D;           // D
-    public KeyCode rightKey2 = KeyCode.RightArrow;  // →
-
-    [Header("Teclas verticales / rotación suelo")]
+    [Header("Teclas de movimiento (fallback sin Haptic)")]
+    public KeyCode forwardKey = KeyCode.UpArrow;
+    public KeyCode backwardKey = KeyCode.DownArrow;
+    public KeyCode leftKey = KeyCode.LeftArrow;
+    public KeyCode rightKey = KeyCode.RightArrow;
     public KeyCode ascendKey = KeyCode.Space;
     public KeyCode descendKey = KeyCode.Tab;
-    public KeyCode jumpKey = KeyCode.Space;          // mismo que ascend, modo suelo
-    public KeyCode rotateLeftKey = KeyCode.A;       // A
-    public KeyCode rotateRightKey = KeyCode.D;      // D
+    public KeyCode jumpKey = KeyCode.Space;
+    public KeyCode yawLeftKey = KeyCode.Q;
+    public KeyCode yawRightKey = KeyCode.E;
+    public KeyCode rotateLeftKey = KeyCode.A;
+    public KeyCode rotateRightKey = KeyCode.D;
 
-    // Salidas para actores
-    [HideInInspector] public Vector2 MoveInput;       // solo para suelo, no se usa en vuelo
-    [HideInInspector] public float GroundRotInput;    // A/D para rotación en suelo (-1 izquierda, 1 derecha)
-    [HideInInspector] public float AscendInput;       // -1..1 (Tab a Space)
-    [HideInInspector] public bool JumpPressed;        // true en el frame que se presiona Space (suelo)
+    // ── Salidas para actores ────────────────────────────────
+    [HideInInspector] public Vector2 MoveInput;
+    [HideInInspector] public float GroundRotInput;
+    [HideInInspector] public float YawInput;
+    [HideInInspector] public float AscendInput;
+    [HideInInspector] public bool JumpPressed;
 
-    // Estados individuales de teclas (para el sistema de propulsión)
-    [HideInInspector] public bool W, S, A, D;
-    [HideInInspector] public bool UpArrow, DownArrow, LeftArrow, RightArrow;
+    // ── Estados internos ────────────────────────────────────
+    private float lastFlightTapTime = -10f;
+    private float lastLandTapTime = -10f;
 
-    private float lastFlightKeyTime = -10f;
-    private float lastLandKeyTime = -10f;
+    // Botones hápticos previos
+    private bool prevLeftButton;
+    private bool prevRightButton;
 
+    // ────────────────────────────────────────────────────────
     void Update()
     {
-        ReadKeyboardInput();
+        if (hapticManager != null && hapticManager.IsConnected)
+        {
+            ReadHapticInput();
+        }
+        else
+        {
+            ReadKeyboardInput();
+        }
         DetectDoubleTaps();
     }
 
-    void ReadKeyboardInput()
+    // ── LECTURA DESDE HAPTICMANAGER ─────────────────────────
+    void ReadHapticInput()
     {
-        // Propulsión (vuelo)
-        W = Input.GetKey(forwardKey1);
-        UpArrow = Input.GetKey(forwardKey2);
-        S = Input.GetKey(backwardKey1);
-        DownArrow = Input.GetKey(backwardKey2);
-        A = Input.GetKey(leftKey1);
-        LeftArrow = Input.GetKey(leftKey2);
-        D = Input.GetKey(rightKey1);
-        RightArrow = Input.GetKey(rightKey2);
+        // Joystick izquierdo → movimiento (X: strafe, Y: forward/back)
+        MoveInput = hapticManager.LeftJoystick;
 
-        // Rotación en suelo
-        float rot = 0f;
-        if (Input.GetKey(rotateLeftKey)) rot -= 1f;
-        if (Input.GetKey(rotateRightKey)) rot += 1f;
-        GroundRotInput = rot;
+        // Joystick derecho (eje X) → rotación
+        float rightX = hapticManager.RightJoystick.x;
+        GroundRotInput = rightX;
+        YawInput = rightX;
 
-        // Ascenso/descenso continuo (para vuelo)
-        float ascend = 0f;
-        if (Input.GetKey(ascendKey)) ascend += 1f;
-        if (Input.GetKey(descendKey)) ascend -= 1f;
-        AscendInput = ascend;
+        // ── Botones según modo ──────────────────────────────
+        bool isFlying = moveManager != null && moveManager.isFlying;
 
-        // Salto (suelo) – solo se activa en modo suelo
-        JumpPressed = Input.GetKeyDown(jumpKey);
+        // Botón derecho
+        bool rightDown = hapticManager.RightButton;
+        // Botón izquierdo
+        bool leftDown = hapticManager.LeftButton;
 
-        // Movimiento en suelo (por ahora con flechas, aunque luego se podría unificar)
-        float moveX = 0f;
-        if (Input.GetKey(KeyCode.RightArrow)) moveX += 1f;
-        if (Input.GetKey(KeyCode.LeftArrow)) moveX -= 1f;
-        float moveY = 0f;
-        if (Input.GetKey(KeyCode.UpArrow)) moveY += 1f;
-        if (Input.GetKey(KeyCode.DownArrow)) moveY -= 1f;
-        MoveInput = new Vector2(moveX, moveY);
-    }
-
-    void DetectDoubleTaps()
-    {
-        // Doble toque para volar
-        if (Input.GetKeyDown(flightKey))
+        if (isFlying)
         {
-            if (Time.time - lastFlightKeyTime <= doubleTapThreshold)
-            {
-                OnFlightRequested?.Invoke();
-                lastFlightKeyTime = -10f;
-            }
-            else
-                lastFlightKeyTime = Time.time;
+            // En vuelo: botón derecho → ascender; botón izquierdo → descender
+            AscendInput = (rightDown ? 1f : 0f) + (leftDown ? -1f : 0f);
+            JumpPressed = false;   // no se salta en vuelo
+        }
+        else
+        {
+            // En suelo: botón derecho → saltar (flanco ascendente)
+            JumpPressed = rightDown && !prevRightButton;
+            AscendInput = 0f;      // no hay ascenso/descenso en suelo
         }
 
-        // Doble toque para aterrizar
-        if (Input.GetKeyDown(landKey))
+        // Actualizar estados previos
+        prevLeftButton = leftDown;
+        prevRightButton = rightDown;
+    }
+
+    // ── LECTURA DESDE TECLADO (FALLBACK) ────────────────────
+    void ReadKeyboardInput()
+    {
+        // Movimiento horizontal
+        float moveX = 0f;
+        if (Input.GetKey(rightKey)) moveX += 1f;
+        if (Input.GetKey(leftKey)) moveX -= 1f;
+
+        float moveY = 0f;
+        if (Input.GetKey(forwardKey)) moveY += 1f;
+        if (Input.GetKey(backwardKey)) moveY -= 1f;
+
+        MoveInput = new Vector2(moveX, moveY);
+
+        // Rotación
+        float yaw = 0f;
+        if (Input.GetKey(yawRightKey)) yaw += 1f;
+        if (Input.GetKey(yawLeftKey)) yaw -= 1f;
+        YawInput = yaw;
+
+        float groundRot = 0f;
+        if (Input.GetKey(rotateRightKey)) groundRot += 1f;
+        if (Input.GetKey(rotateLeftKey)) groundRot -= 1f;
+        GroundRotInput = groundRot;
+
+        // Ascenso/descenso (según modo)
+        bool isFlying = moveManager != null && moveManager.isFlying;
+        if (isFlying)
         {
-            if (Time.time - lastLandKeyTime <= doubleTapThreshold)
+            float ascend = 0f;
+            if (Input.GetKey(ascendKey)) ascend += 1f;
+            if (Input.GetKey(descendKey)) ascend -= 1f;
+            AscendInput = ascend;
+            JumpPressed = false;
+        }
+        else
+        {
+            AscendInput = 0f;
+            JumpPressed = Input.GetKeyDown(jumpKey);
+        }
+    }
+
+    // ── DOBLE PULSACIÓN (teclado + háptico) ─────────────────
+    void DetectDoubleTaps()
+    {
+        bool isFlying = moveManager != null && moveManager.isFlying;
+
+        // ── Detección por teclado ───────────────────────────
+        if (Input.GetKeyDown(ascendKey))   // flightKey original
+        {
+            if (!isFlying && Time.time - lastFlightTapTime <= doubleTapThreshold)
             {
-                OnLandRequested?.Invoke();
-                lastLandKeyTime = -10f;
+                OnFlightRequested?.Invoke();
+                lastFlightTapTime = -10f;
             }
             else
-                lastLandKeyTime = Time.time;
+            {
+                lastFlightTapTime = Time.time;
+            }
+        }
+
+        if (Input.GetKeyDown(descendKey))  // landKey original
+        {
+            if (isFlying && Time.time - lastLandTapTime <= doubleTapThreshold)
+            {
+                OnLandRequested?.Invoke();
+                lastLandTapTime = -10f;
+            }
+            else
+            {
+                lastLandTapTime = Time.time;
+            }
+        }
+
+        // ── Detección por botones hápticos ──────────────────
+        if (hapticManager != null && hapticManager.IsConnected)
+        {
+            // Botón derecho → doble toque para volar (solo en suelo)
+            if (hapticManager.RightButton && !prevRightButton)  // flanco ascendente
+            {
+                if (!isFlying && Time.time - lastFlightTapTime <= doubleTapThreshold)
+                {
+                    OnFlightRequested?.Invoke();
+                    lastFlightTapTime = -10f;
+                }
+                else
+                {
+                    lastFlightTapTime = Time.time;
+                }
+            }
+
+            // Botón izquierdo → doble toque para aterrizar (solo en vuelo)
+            if (hapticManager.LeftButton && !prevLeftButton)    // flanco ascendente
+            {
+                if (isFlying && Time.time - lastLandTapTime <= doubleTapThreshold)
+                {
+                    OnLandRequested?.Invoke();
+                    lastLandTapTime = -10f;
+                }
+                else
+                {
+                    lastLandTapTime = Time.time;
+                }
+            }
         }
     }
 }

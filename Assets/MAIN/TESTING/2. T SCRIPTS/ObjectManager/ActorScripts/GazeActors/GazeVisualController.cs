@@ -13,9 +13,8 @@ using UnityEngine;
 ///   Outline shader should expose:
 ///     _OutlineColor (Color)   — RGB+A tint of the outline
 ///     _OutlineIntensity (Float, 0..1) — master intensity/alpha
-///
-///   Progress shader should expose:
 ///     _ScanProgress (Float, 0..1) — ring fill amount
+///     _DrainIntensity (Float, 0..1) — electricity effect
 ///     _ProgressColor (Color)      — ring color
 ///
 ///   These are convention names — override them in the Inspector if your
@@ -141,6 +140,14 @@ public class GazeVisualController : MonoBehaviour
     [Header("Fade Out")]
     public FadeOutSettings fadeOut = new();
 
+    [Header("Target Type")]
+    public TargetType targetType = TargetType.Enemy;
+
+    // =========================================================================
+    // Public enums
+    // =========================================================================
+    public enum TargetType { Enemy, Ally, Interactable }
+
     // =========================================================================
     // Private state
     // =========================================================================
@@ -153,18 +160,21 @@ public class GazeVisualController : MonoBehaviour
     private Material[] _progressMats;
 
     // Lerp targets for smooth color/intensity transitions
-    private Color   _currentOutlineColor;
-    private Color   _targetOutlineColor;
-    private float   _currentOutlineIntensity;   // actual value applied to shader
-    private float   _targetOutlineIntensity;    // what we're lerping toward
+    private Color _currentOutlineColor;
+    private Color _targetOutlineColor;
+    private float _currentOutlineIntensity;   // actual value applied to shader
+    private float _targetOutlineIntensity;    // what we're lerping toward
 
     // Remembered for fade-out interpolation
-    private float   _currentProgress;
-    private Color   _currentProgressColor;
+    private float _currentProgress;
+    private Color _currentProgressColor;
 
     // Active coroutine handles
     private Coroutine _fadeRoutine;
     private Coroutine _pulseRoutine;
+
+    // Material property block for dynamic updates (drain, attack)
+    private MaterialPropertyBlock _propertyBlock;
 
     // =========================================================================
     // Unity lifecycle
@@ -172,7 +182,7 @@ public class GazeVisualController : MonoBehaviour
 
     private void Awake()
     {
-        _outlineMats  = InstantiateMaterials(outline.outlineRenderers);
+        _outlineMats = InstantiateMaterials(outline.outlineRenderers);
         _progressMats = InstantiateMaterials(progressRing.progressRenderers);
 
         // Ensure all outline renderers start disabled
@@ -182,10 +192,13 @@ public class GazeVisualController : MonoBehaviour
         ApplyOutline(Color.clear, 0f);
         ApplyProgress(0f, Color.clear);
 
-        _currentOutlineColor     = Color.clear;
-        _targetOutlineColor      = Color.clear;
+        _currentOutlineColor = Color.clear;
+        _targetOutlineColor = Color.clear;
         _currentOutlineIntensity = 0f;
-        _targetOutlineIntensity  = 0f;
+        _targetOutlineIntensity = 0f;
+
+        _propertyBlock = new MaterialPropertyBlock();
+        ApplyTargetTypeColor();
     }
 
     /// <summary>
@@ -227,58 +240,42 @@ public class GazeVisualController : MonoBehaviour
     // Public API — called by GazeTargetBehaviour
     // =========================================================================
 
-    /// <summary>
-    /// Gaze first acquired this target.
-    /// Shows a thin holographic outline at low intensity (fades in smoothly).
-    /// </summary>
     public void ShowDetected()
     {
         CancelAllCoroutines();
         _state = VisualState.Detected;
 
-        _currentProgress      = 0f;
+        _currentProgress = 0f;
         _currentProgressColor = progressRing.scanningColor;
 
-        // Enable renderers — intensity starts at 0 and lerps to 1 in Update
         SetOutlineRenderersEnabled(true);
-        _targetOutlineColor     = outline.detectedColor;
+        _targetOutlineColor = outline.detectedColor;
         _targetOutlineIntensity = 1f;
-        // Don't snap _currentOutlineIntensity — let it fade in from whatever it is
 
         ApplyProgress(0f, progressRing.scanningColor);
     }
 
-    /// <summary>
-    /// Updates the progress ring fill (0..1).
-    /// Called every frame by DetectionVisualActor while this is the active target.
-    /// </summary>
     public void UpdateProgress(float progress)
     {
-        // Don't override locked visuals mid-lock
         if (_state == VisualState.Locked || _state == VisualState.FadingOut)
             return;
 
-        _currentProgress      = progress;
+        _currentProgress = progress;
         _currentProgressColor = progressRing.scanningColor;
         _state = progress > 0.001f ? VisualState.Scanning : VisualState.Detected;
 
         ApplyProgress(progress, progressRing.scanningColor);
     }
 
-    /// <summary>
-    /// Full lock achieved.
-    /// Transitions outline to locked color, fills ring, activates VFX, fires pulse.
-    /// </summary>
     public void ShowLocked()
     {
         CancelAllCoroutines();
         _state = VisualState.Locked;
 
-        _currentProgress      = 1f;
+        _currentProgress = 1f;
         _currentProgressColor = progressRing.lockedColor;
 
-        // Transition outline to locked color
-        _targetOutlineColor     = outline.lockedColor;
+        _targetOutlineColor = outline.lockedColor;
         _targetOutlineIntensity = 1f;
 
         ApplyProgress(1f, progressRing.lockedColor);
@@ -287,17 +284,68 @@ public class GazeVisualController : MonoBehaviour
         _pulseRoutine = StartCoroutine(PulseRoutine());
     }
 
-    /// <summary>
-    /// Triggers the visual fade-out coroutine.
-    /// Called by GazeTargetBehaviour after the DetectionVisualActor's fade delay.
-    /// </summary>
     public void StartFadeOut()
     {
-        if (_state == VisualState.Idle) return; // already hidden
+        if (_state == VisualState.Idle) return;
 
         CancelAllCoroutines();
         _state = VisualState.FadingOut;
         _fadeRoutine = StartCoroutine(FadeOutRoutine());
+    }
+
+    // =========================================================================
+    // New methods for drain & attack
+    // =========================================================================
+
+    /// <summary>
+    /// Sets the electricity/drain intensity (0..1). 1 = full drain effect.
+    /// </summary>
+    public void SetDrainIntensity(float intensity)
+    {
+        foreach (var r in outline.outlineRenderers)
+        {
+            if (r == null) continue;
+            r.GetPropertyBlock(_propertyBlock);
+            _propertyBlock.SetFloat("_DrainIntensity", intensity);
+            r.SetPropertyBlock(_propertyBlock);
+        }
+    }
+
+    /// <summary>
+    /// Sets the attack progress (0..1), increasing glow and shifting color.
+    /// </summary>
+    public void SetAttackProgress(float progress)
+    {
+        Color attColor = Color.Lerp(outline.lockedColor, Color.white, progress);
+        foreach (var r in outline.outlineRenderers)
+        {
+            if (r == null) continue;
+            r.GetPropertyBlock(_propertyBlock);
+            _propertyBlock.SetColor("_OutlineColor", attColor);
+            _propertyBlock.SetFloat("_OutlineIntensity", 1.5f + progress);
+            r.SetPropertyBlock(_propertyBlock);
+        }
+    }
+
+    /// <summary>
+    /// Re-apply base color depending on target type.
+    /// </summary>
+    public void ApplyTargetTypeColor()
+    {
+        Color baseColor;
+        switch (targetType)
+        {
+            case TargetType.Enemy: baseColor = Color.red; break;
+            case TargetType.Ally: baseColor = Color.green; break;
+            default: baseColor = Color.yellow; break;
+        }
+        foreach (var r in outline.outlineRenderers)
+        {
+            if (r == null) continue;
+            r.GetPropertyBlock(_propertyBlock);
+            _propertyBlock.SetColor("_OutlineColor", baseColor);
+            r.SetPropertyBlock(_propertyBlock);
+        }
     }
 
     // =========================================================================
@@ -306,41 +354,39 @@ public class GazeVisualController : MonoBehaviour
 
     private IEnumerator FadeOutRoutine()
     {
-        float startIntensity     = _currentOutlineIntensity;
+        float startIntensity = _currentOutlineIntensity;
         float startProgressValue = _currentProgress;
-        Color startOutlineColor  = _currentOutlineColor;
+        Color startOutlineColor = _currentOutlineColor;
         Color startProgressColor = _currentProgressColor;
         float elapsed = 0f;
 
         while (elapsed < fadeOut.duration)
         {
             elapsed += Time.deltaTime;
-            float t     = Mathf.Clamp01(elapsed / fadeOut.duration);
+            float t = Mathf.Clamp01(elapsed / fadeOut.duration);
             float eased = fadeOut.curve.Evaluate(t);
 
-            float intensity = Mathf.Lerp(startIntensity,     0f,          eased);
-            float prog      = Mathf.Lerp(startProgressValue, 0f,          eased);
-            Color outCol    = Color.Lerp(startOutlineColor,  Color.clear, eased);
-            Color ringCol   = Color.Lerp(startProgressColor, Color.clear, eased);
+            float intensity = Mathf.Lerp(startIntensity, 0f, eased);
+            float prog = Mathf.Lerp(startProgressValue, 0f, eased);
+            Color outCol = Color.Lerp(startOutlineColor, Color.clear, eased);
+            Color ringCol = Color.Lerp(startProgressColor, Color.clear, eased);
 
-            // Write directly — bypass the Update lerp while fading
-            _currentOutlineColor     = outCol;
+            _currentOutlineColor = outCol;
             _currentOutlineIntensity = intensity;
 
             ApplyOutline(outCol, intensity);
-            ApplyProgress(prog,  ringCol);
+            ApplyProgress(prog, ringCol);
 
             yield return null;
         }
 
-        // Fully hidden — reset state
         ApplyOutline(Color.clear, 0f);
         ApplyProgress(0f, Color.clear);
         SetOutlineRenderersEnabled(false);
         DeactivateLockVFX();
 
         _currentOutlineIntensity = 0f;
-        _currentOutlineColor     = Color.clear;
+        _currentOutlineColor = Color.clear;
         _state = VisualState.Idle;
         _fadeRoutine = null;
     }
@@ -349,19 +395,17 @@ public class GazeVisualController : MonoBehaviour
     {
         for (int i = 0; i < lockFeedback.pulseCount; i++)
         {
-            // Rise
             float t = 0f;
             while (t < 1f)
             {
                 t += Time.deltaTime * lockFeedback.pulseSpeed;
-                t  = Mathf.Clamp01(t);
+                t = Mathf.Clamp01(t);
                 float pulse = Mathf.Sin(t * Mathf.PI) * lockFeedback.pulseAmplitude;
                 ApplyOutline(_currentOutlineColor, 1f + pulse);
                 yield return null;
             }
         }
 
-        // Restore clean locked intensity
         ApplyOutline(_currentOutlineColor, 1f);
         _currentOutlineIntensity = 1f;
         _pulseRoutine = null;
@@ -432,10 +476,6 @@ public class GazeVisualController : MonoBehaviour
     // Private helpers — material management
     // =========================================================================
 
-    /// <summary>
-    /// Creates a per-instance Material copy for each renderer.
-    /// This prevents modifying shared assets when we write to mat properties.
-    /// </summary>
     private static Material[] InstantiateMaterials(Renderer[] renderers)
     {
         if (renderers == null || renderers.Length == 0)
@@ -445,7 +485,7 @@ public class GazeVisualController : MonoBehaviour
         for (int i = 0; i < renderers.Length; i++)
         {
             if (renderers[i] != null)
-                mats[i] = renderers[i].material; // .material already returns a new instance
+                mats[i] = renderers[i].material;
         }
         return mats;
     }
@@ -459,7 +499,7 @@ public class GazeVisualController : MonoBehaviour
 
     private void CancelAllCoroutines()
     {
-        if (_fadeRoutine  != null) { StopCoroutine(_fadeRoutine);  _fadeRoutine  = null; }
+        if (_fadeRoutine != null) { StopCoroutine(_fadeRoutine); _fadeRoutine = null; }
         if (_pulseRoutine != null) { StopCoroutine(_pulseRoutine); _pulseRoutine = null; }
     }
 }
