@@ -13,7 +13,7 @@ using UnityEngine;
 /// </summary>
 public class GazeManager : ManagerScript
 {
-    // ─── Inspector ────────────────────────────────────────────────────────────
+    // ─── Inspector ────────────────────────────────────────────
 
     [Header("Gaze Detection")]
     [Tooltip("Origin of the gaze ray. Assign the camera or eye transform. Falls back to Camera.main.")]
@@ -37,7 +37,7 @@ public class GazeManager : ManagerScript
              "If false, partial progress is carried forward to the new target.")]
     public bool resetProgressOnTargetChange = true;
 
-    // ─── State (read by Actors, UI, other systems) ────────────────────────────
+    // ─── State (read by Actors, UI, other systems) ────────────
 
     /// <summary>The target currently being gazed at (null if none).</summary>
     public IGazeTarget CurrentTarget { get; private set; }
@@ -48,7 +48,7 @@ public class GazeManager : ManagerScript
     /// <summary>True once FocusProgress reaches 1 on the current target.</summary>
     public bool IsLocked { get; private set; }
 
-    // ─── Events ───────────────────────────────────────────────────────────────
+    // ─── Events ───────────────────────────────────────────────
 
     /// <summary>Fired when the active target changes (including to null).</summary>
     public event Action<IGazeTarget> OnGazeTargetChanged;
@@ -62,11 +62,11 @@ public class GazeManager : ManagerScript
     /// <summary>Fired every frame with the current FocusProgress value (0..1).</summary>
     public event Action<float> OnGazeFocusProgress;
 
-    // ─── Private ──────────────────────────────────────────────────────────────
+    // ─── Private ──────────────────────────────────────────────
 
     private StickyTargetActor _stickyActor;
 
-    // ─── Unity lifecycle ──────────────────────────────────────────────────────
+    // ─── Unity lifecycle ──────────────────────────────────────
 
     private void Awake()
     {
@@ -80,7 +80,7 @@ public class GazeManager : ManagerScript
     /// </summary>
     public override void Update()
     {
-        // ── 1. Raw detection ──────────────────────────────────────────────────
+        // ── 1. Raw detection ──────────────────────────────────
         IGazeTarget detected = DetectTarget();
 
         // ── 2. Sticky stabilization (reduces flicker on fast movement) ────────
@@ -89,16 +89,16 @@ public class GazeManager : ManagerScript
             ? _stickyActor.Stabilize(detected)
             : detected;
 
-        // ── 3. Target transition ──────────────────────────────────────────────
+        // ── 3. Target transition ──────────────────────────────
         HandleTargetTransition(stabilizedTarget);
 
-        // ── 4. Focus progression ──────────────────────────────────────────────
+        // ── 4. Focus progression ──────────────────────────────
         UpdateFocusProgress();
 
-        // ── 5. Broadcast focus progress ───────────────────────────────────────
+        // ── 5. Broadcast focus progress ───────────────────────
         OnGazeFocusProgress?.Invoke(FocusProgress);
 
-        // ── 6. Run ALL actors (non-exclusive) ─────────────────────────────────
+        // ── 6. Run ALL actors (non-exclusive) ─────────────────
         foreach (ActorBase actor in actors)
         {
             if (actor != null)
@@ -106,13 +106,13 @@ public class GazeManager : ManagerScript
         }
     }
 
-    // ─── Target transition ────────────────────────────────────────────────────
+    // ─── Target transition ────────────────────────────────────
 
     private void HandleTargetTransition(IGazeTarget newTarget)
     {
         if (newTarget == CurrentTarget) return;
 
-        // ── Exit previous target ───────────────────────────────────────────────
+        // ── Exit previous target ───────────────────────────────
         if (CurrentTarget != null)
         {
             CurrentTarget.OnGazeExit();
@@ -126,7 +126,7 @@ public class GazeManager : ManagerScript
 
         CurrentTarget = newTarget;
 
-        // ── Enter new target ───────────────────────────────────────────────────
+        // ── Enter new target ───────────────────────────────────
         if (CurrentTarget != null)
         {
             CurrentTarget.OnGazeEnter();
@@ -134,7 +134,7 @@ public class GazeManager : ManagerScript
         }
     }
 
-    // ─── Focus progression ────────────────────────────────────────────────────
+    // ─── Focus progression ────────────────────────────────────
 
     private void UpdateFocusProgress()
     {
@@ -157,7 +157,7 @@ public class GazeManager : ManagerScript
         }
     }
 
-    // ─── Raycast ─────────────────────────────────────────────────────────────
+    // ─── Raycast ─────────────────────────────────────────────
 
     private IGazeTarget DetectTarget()
     {
@@ -177,7 +177,7 @@ public class GazeManager : ManagerScript
         return null;
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────
 
     private void EnsureStickyActor()
     {
@@ -192,5 +192,23 @@ public class GazeManager : ManagerScript
     {
         HandleTargetTransition(null);
         _stickyActor?.ClearSticky();
+    }
+
+    /// <summary>
+    /// Releases the current target without going through the sticky logic.
+    /// Use this when the target is destroyed to avoid accessing a dead object.
+    /// Also notifies the DetectionVisualActor to clear its internal state.
+    /// </summary>
+    public void ForceReleaseTarget()
+    {
+        HandleTargetTransition(null);
+        _stickyActor?.ClearSticky();
+
+        // Limpiar también el DetectionVisualActor para evitar que intente hacer fade sobre un objeto destruido
+        foreach (var actor in actors)
+        {
+            if (actor is DetectionVisualActor visualActor)
+                visualActor.ForceClear();
+        }
     }
 }

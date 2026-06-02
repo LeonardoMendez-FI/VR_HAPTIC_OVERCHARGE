@@ -25,19 +25,44 @@ public class FlightPropulsionActor : MoveActor
     {
         if (rb == null) return;
 
-        // Leer entradas procesadas desde el InputManager
-        Vector2 moveInput = input.MoveInput;       // x: strafe, y: forward/back
-        float rotInput = input.YawInput;           // -1..1
-        float ascendInput = input.AscendInput;     // -1..1
+        // Leer teclas individuales desde InputManager
+        bool w = input.W, up = input.UpArrow;
+        bool s = input.S, down = input.DownArrow;
+        bool a = input.A, left = input.LeftArrow;
+        bool d = input.D, right = input.RightArrow;
+        float ascendInput = input.AscendInput;
 
-        if (showDebug)
-            Debug.Log($"Flight: Move=({moveInput.x:F2},{moveInput.y:F2}) Rot={rotInput:F2} Asc={ascendInput:F2}");
+        // ── Cálculo de empuje lineal (local) ─────────────────
+        float moveX = 0f, moveZ = 0f, torque = 0f;
 
-        // Vector de empuje local (lateral, vertical, frontal)
-        Vector3 rawInput = new Vector3(moveInput.x, ascendInput, moveInput.y);
+        // Forward / Backward + Torque
+        if (w && !up && !s && !down)          { moveZ = 1f; torque = 1f; }
+        else if (!w && up && !s && !down)      { moveZ = 1f; torque = -1f; }
+        else if (!w && !up && s && !down)      { moveZ = -1f; torque = -1f; }
+        else if (!w && !up && !s && down)      { moveZ = -1f; torque = 1f; }
+        else if (w && up && !s && !down)       { moveZ = 1f; torque = 0f; }
+        else if (!w && !up && s && down)       { moveZ = -1f; torque = 0f; }
+        else if (w && !up && !s && down)       { moveZ = 0f; torque = 1f; }
+        else if (!w && up && s && !down)       { moveZ = 0f; torque = -1f; }
+        else if (w && s)                       { moveZ = 0f; torque = 0f; }
+
+        // Lateral movement
+        if (a && !d && !right) moveX = -1f;
+        else if (!a && d && !left) moveX = 1f;
+        else if (left && !a && !d && !right) moveX = -1f;
+        else if (right && !d && !a && !left) moveX = 1f;
+        if (a && left) moveX = -2f;
+        if (d && right) moveX = 2f;
+        if ((a && right) || (d && left)) moveX = 0f;
+
+        // Vector de empuje local
+        Vector3 rawInput = new Vector3(moveX, ascendInput, moveZ);
         float maxSpeed = PlayerParameters.MEDIUM_LINEAR_SPEED * linearSpeedMultiplier;
         Vector3 desiredVelocity = Vector3.ClampMagnitude(rawInput, 1f) * maxSpeed;
-        float desiredAngularSpeed = rotInput * PlayerParameters.MEDIUM_ANGULAR_SPEED * angularSpeedMultiplier;
+        float desiredAngularSpeed = torque * PlayerParameters.MEDIUM_ANGULAR_SPEED * angularSpeedMultiplier;
+
+        if (showDebug)
+            Debug.Log($"Flight: rawInput={rawInput} desiredVel={desiredVelocity} torque={torque}");
 
         // Aceleraciones suaves
         float inputMag = rawInput.magnitude;

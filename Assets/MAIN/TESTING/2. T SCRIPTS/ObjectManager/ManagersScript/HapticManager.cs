@@ -12,21 +12,21 @@ public class HapticManager : MonoBehaviour
     public int listenPort = 5005;
 
     [Header("ESP32 Salidas (Chaleco Háptico)")]
-    public string salidasIP = "192.168.43.2";
+    public string salidasIP = "192.168.4.2";
     public int salidasPort = 5006;
 
     [Header("Configuración")]
     public float joystickDeadZone = 0.05f;
     public float sendInterval = 0.03f;
 
-    // ── Estado público (leído por InputManager) ─────────────
-    public Vector2 LeftJoystick { get; private set; }
+    // ── Estado público ──────────────────────────────────────
+    public Vector2 LeftJoystick  { get; private set; }
     public Vector2 RightJoystick { get; private set; }
-    public bool LeftButton { get; private set; }
+    public bool LeftButton  { get; private set; }
     public bool RightButton { get; private set; }
     public bool IsConnected { get; private set; }
 
-    // ── Snapshots para comunicación thread-safe ─────────────
+    // ── Snapshots thread‑safe ──────────────────────────────
     private HapticInputSnapshot _currentSnapshot;
     private volatile bool _snapshotReady;
 
@@ -37,14 +37,14 @@ public class HapticManager : MonoBehaviour
     private bool threadRunning;
     private float lastReceiveTime;
 
-    // ── Motores (valores objetivo 0-255) ───────────────────
+    // ── Motores (valores objetivo 0‑255) ───────────────────
     private float[] targetDamage = new float[4];
     private float[] targetCharge = new float[4];
     private float[] currentDamage = new float[4];
     private float[] currentCharge = new float[4];
     private float sendTimer;
 
-    // ── Referencia a corrutinas de efectos ──────────────────
+    // ── Corrutinas de efectos ──────────────────────────────
     private Coroutine attackRoutine;
 
     void Start()
@@ -54,36 +54,47 @@ public class HapticManager : MonoBehaviour
         receiveThread.IsBackground = true;
         receiveThread.Start();
 
-        sendClient = new UdpClient();
-        sendClient.Connect(salidasIP, salidasPort);
+        TryConnectToMotors();
+    }
+
+    void TryConnectToMotors()
+    {
+        try
+        {
+            sendClient = new UdpClient();
+            sendClient.Connect(salidasIP, salidasPort);
+            Debug.Log($"[HapticManager] Conectado al ESP32 de salidas en {salidasIP}:{salidasPort}");
+        }
+        catch (SocketException ex)
+        {
+            Debug.LogWarning($"[HapticManager] No se pudo conectar al ESP32 de salidas. " +
+                             $"El chaleco háptico estará desactivado. Error: {ex.Message}");
+            sendClient = null;
+        }
     }
 
     void Update()
     {
-        // Copiar snapshot del hilo de recepción si hay uno nuevo
+        // Copiar snapshot del hilo
         if (_snapshotReady)
         {
             _snapshotReady = false;
             var snap = _currentSnapshot;
-            LeftJoystick = snap.leftJoystick;
-            RightJoystick = snap.rightJoystick;
-            LeftButton = snap.leftButton;
-            RightButton = snap.rightButton;
-            IsConnected = snap.isConnected;
+            LeftJoystick   = snap.leftJoystick;
+            RightJoystick  = snap.rightJoystick;
+            LeftButton     = snap.leftButton;
+            RightButton    = snap.rightButton;
+            IsConnected    = snap.isConnected;
             lastReceiveTime = Time.time;
         }
         else if (Time.time - lastReceiveTime > 1f)
         {
             IsConnected = false;
-            // Desconexión: apagar todos los motores
-            if (IsConnected == false) // solo cuando cambia
-            {
-                StopChargeEffect();
-                for (int i = 0; i < 4; i++) targetDamage[i] = 0;
-            }
+            for (int i = 0; i < 4; i++) targetDamage[i] = 0;
+            StopChargeEffect();
         }
 
-        // Interpolar motores hacia objetivos
+        // Interpolar motores
         float t = Time.deltaTime * 20f;
         for (int i = 0; i < 4; i++)
         {
@@ -91,8 +102,9 @@ public class HapticManager : MonoBehaviour
             currentCharge[i] = Mathf.Lerp(currentCharge[i], targetCharge[i], t);
         }
 
+        // Enviar cada sendInterval segundos, solo si hay cliente conectado
         sendTimer += Time.deltaTime;
-        if (sendTimer >= sendInterval)
+        if (sendTimer >= sendInterval && sendClient != null)
         {
             sendTimer = 0f;
             SendMotorPacket();
@@ -136,28 +148,36 @@ public class HapticManager : MonoBehaviour
 
         _currentSnapshot = new HapticInputSnapshot
         {
-            leftJoystick = new Vector2(x1, y1),
+            leftJoystick  = new Vector2(x1, y1),
             rightJoystick = new Vector2(x2, y2),
-            leftButton = b1 == 1,
-            rightButton = b2 == 1,
-            isConnected = true
+            leftButton    = b1 == 1,
+            rightButton   = b2 == 1,
+            isConnected   = true
         };
         _snapshotReady = true;
     }
 
-    // ── Envío de motores ───────────────────────────────────
     void SendMotorPacket()
     {
+        if (sendClient == null) return;
         byte[] packet = new byte[8];
         for (int i = 0; i < 4; i++)
         {
-            packet[i] = (byte)Mathf.Clamp((int)currentDamage[i], 0, 255);
+            packet[i]     = (byte)Mathf.Clamp((int)currentDamage[i], 0, 255);
             packet[i + 4] = (byte)Mathf.Clamp((int)currentCharge[i], 0, 255);
         }
-        sendClient?.Send(packet, 8);
+        try
+        {
+            sendClient.Send(packet, 8);
+        }
+        catch (SocketException ex)
+        {
+            Debug.LogWarning($"[HapticManager] Fallo al enviar datos a motores: {ex.Message}");
+            sendClient = null;
+        }
     }
 
-    // ── API para otros sistemas ────────────────────────────
+    // ── API pública ────────────────────────────────────────
 
     public void TriggerDamageFeedback(Vector3 enemyDir)
     {
@@ -167,10 +187,10 @@ public class HapticManager : MonoBehaviour
         float angle = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
 
         int motorIndex = -1;
-        if (angle > -45 && angle <= 45) motorIndex = 1;
-        else if (angle > 45 && angle <= 135) motorIndex = 0;
+        if (angle > -45 && angle <= 45)       motorIndex = 1;
+        else if (angle > 45 && angle <= 135)  motorIndex = 0;
         else if (angle < -45 && angle >= -135) motorIndex = 3;
-        else motorIndex = 2;
+        else                                   motorIndex = 2;
 
         if (motorIndex >= 0)
             StartCoroutine(DamagePulse(motorIndex));

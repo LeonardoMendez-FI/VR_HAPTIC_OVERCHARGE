@@ -1,11 +1,9 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class AttackSequenceActor : GazeActor
 {
     [Header("Attack Settings")]
     public float attackDuration = 2f;
-    public RawImage redVignette;
 
     [Header("Haptic Feedback")]
     public HapticManager hapticManager;
@@ -13,7 +11,7 @@ public class AttackSequenceActor : GazeActor
     [Header("References")]
     public GazeEnergyDrainActor drainActor;
     public AttackManager attackManager;
-    public MoveManager moveManager;           // ← añadido para SetAttacking
+    public MoveManager moveManager;
 
     private bool isAttacking;
     private float attackTimer;
@@ -44,10 +42,11 @@ public class AttackSequenceActor : GazeActor
         targetElectronics = go?.GetComponent<ElectronicObject>();
         targetVisual = go?.GetComponentInChildren<GazeVisualController>();
 
-        // Bloquear movimiento del jugador durante el ataque
+        // Bloquear movimiento del jugador
         moveManager?.SetAttacking(true);
+        // Iniciar ataque (dispara el evento que activa la sobreimpresión roja)
+        attackManager?.StartAttack();
 
-        if (redVignette != null) redVignette.gameObject.SetActive(true);
         hapticManager?.StartAttackEffect(attackDuration);
 
         StartExecution();
@@ -70,7 +69,6 @@ public class AttackSequenceActor : GazeActor
         float damage = (maxEnergy / attackDuration) * Time.deltaTime;
         targetElectronics.TakeDamage(damage);
 
-        // Reportar daño solo al AttackManager (única fuente de verdad)
         attackManager?.RegisterDamageDealt(damage);
 
         if (targetVisual != null)
@@ -84,10 +82,12 @@ public class AttackSequenceActor : GazeActor
 
     void DestroyEnemy()
     {
-        hapticManager?.EndAttackEffect();
+        // Liberar el objetivo del GazeManager antes de destruir el objeto
+        GazeManager?.ForceReleaseTarget();
 
-        // Incrementar eliminaciones en el AttackManager
+        hapticManager?.EndAttackEffect();
         attackManager?.AddElimination();
+        attackManager?.EndAttack();
 
         if (currentTarget?.TargetTransform != null)
             Destroy(currentTarget.TargetTransform.gameObject);
@@ -97,7 +97,6 @@ public class AttackSequenceActor : GazeActor
 
         isAttacking = false;
         StopExecution();
-        if (redVignette != null) redVignette.gameObject.SetActive(false);
     }
 
     public override void StopExecution()
@@ -106,8 +105,8 @@ public class AttackSequenceActor : GazeActor
         if (isAttacking)
         {
             isAttacking = false;
-            if (redVignette != null) redVignette.gameObject.SetActive(false);
             hapticManager?.EndAttackEffect();
+            attackManager?.EndAttack();
             moveManager?.SetAttacking(false);
         }
     }

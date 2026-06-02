@@ -17,7 +17,7 @@ using UnityEngine;
 /// </summary>
 public class DetectionVisualActor : GazeActor
 {
-    // ─── Inspector ────────────────────────────────────────────────────────────
+    // ─── Inspector ────────────────────────────────────────────
 
     [Header("Fade Timing")]
     [Tooltip("Seconds between OnGazeExit (immediate logic event) and OnGazeLost " +
@@ -25,12 +25,13 @@ public class DetectionVisualActor : GazeActor
     [Range(0f, 2f)]
     public float lostFadeDelay = 0.4f;
 
-    // ─── State ────────────────────────────────────────────────────────────────
+    // ─── State ────────────────────────────────────────────────
 
     private IGazeTarget _trackedTarget;    // target currently receiving visual updates
     private float _lostFadeTimer = -1f;    // -1 = no fade pending; ≥0 = countdown active
+    private Coroutine _fadeRoutine;        // referencia a la corrutina de fade (si se usa)
 
-    // ─── Actor lifecycle ──────────────────────────────────────────────────────
+    // ─── Actor lifecycle ──────────────────────────────────────
 
     public override bool MeetsRequirements() => GazeManager != null;
 
@@ -63,14 +64,14 @@ public class DetectionVisualActor : GazeActor
     /// </summary>
     public override void UpdateExecution()
     {
-        // ── 1. Forward focus progress to active target ─────────────────────────
+        // ── 1. Forward focus progress to active target ────────
         // Skip if a fade is in progress — the target is mid fade-out, not actively tracking
         if (_trackedTarget != null && _lostFadeTimer < 0f)
         {
             _trackedTarget.OnGazeFocusUpdate(GazeManager.FocusProgress);
         }
 
-        // ── 2. Tick the lost-fade timer ────────────────────────────────────────
+        // ── 2. Tick the lost-fade timer ───────────────────────
         if (_lostFadeTimer >= 0f)
         {
             _lostFadeTimer -= Time.deltaTime;
@@ -87,7 +88,7 @@ public class DetectionVisualActor : GazeActor
     // Clean up if this actor is destroyed mid-session
     private void OnDestroy() => ForceCompleteFade();
 
-    // ─── Event handlers ───────────────────────────────────────────────────────
+    // ─── Event handlers ───────────────────────────────────────
 
     /// <summary>
     /// A new target has been acquired (or null if gaze went idle).
@@ -128,7 +129,7 @@ public class DetectionVisualActor : GazeActor
             _lostFadeTimer = lostFadeDelay;
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────
 
     /// <summary>
     /// Immediately triggers OnGazeLost on the tracked target regardless of timer.
@@ -139,6 +140,21 @@ public class DetectionVisualActor : GazeActor
         if (_trackedTarget != null)
             _trackedTarget.OnGazeLost();
 
+        _lostFadeTimer = -1f;
+        _trackedTarget = null;
+    }
+
+    /// <summary>
+    /// Cancels any pending fade and immediately clears the tracked target.
+    /// Use this when the target is destroyed externally to avoid accessing a dead object.
+    /// </summary>
+    public void ForceClear()
+    {
+        if (_fadeRoutine != null)
+        {
+            StopCoroutine(_fadeRoutine);
+            _fadeRoutine = null;
+        }
         _lostFadeTimer = -1f;
         _trackedTarget = null;
     }
