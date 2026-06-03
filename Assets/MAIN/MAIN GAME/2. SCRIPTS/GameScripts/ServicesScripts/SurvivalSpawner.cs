@@ -11,6 +11,7 @@ public class SurvivalSpawner : ServiceScript
     public float initialSpawnDelay = 2f;
     public float spawnRadius = 30f;         // radio alrededor del centro donde aparecen
     public Transform centerPoint;           // centro del mapa
+    public Transform player;                // objetivo de los enemigos (auto: tag "Player" o Camera.main)
 
     [Header("Difficulty Progression")]
     public int baseEnemiesPerWave = 3;
@@ -29,6 +30,19 @@ public class SurvivalSpawner : ServiceScript
     void Start()
     {
         waveTimer = initialSpawnDelay;
+
+        // FIX: centro por defecto = este objeto (evita NullReference si no se asignó).
+        if (centerPoint == null) centerPoint = transform;
+
+        // FIX: resolver al jugador para que los enemigos lo persigan. Los prefabs no
+        // pueden referenciarlo en el editor, así que lo buscamos en runtime:
+        // 1) GameObject con tag "Player", 2) cámara principal (cabeza VR del jugador).
+        if (player == null)
+        {
+            GameObject tagged = GameObject.FindGameObjectWithTag("Player");
+            if (tagged != null) player = tagged.transform;
+            else if (Camera.main != null) player = Camera.main.transform;
+        }
     }
 
     void Update()
@@ -51,6 +65,15 @@ public class SurvivalSpawner : ServiceScript
 
     IEnumerator SpawnWave()
     {
+        // FIX: sin prefabs no hay nada que spawnear (evita IndexOutOfRange y log claro).
+        if (enemyPrefabs == null || enemyPrefabs.Count == 0)
+        {
+            Debug.LogWarning("[SurvivalSpawner] enemyPrefabs está vacío: no se puede spawnear.");
+            spawningWave = false;
+            waveTimer = timeBetweenWaves;
+            yield break;
+        }
+
         currentWave++;
         int enemiesToSpawn = baseEnemiesPerWave + (currentWave - 1) * extraEnemiesPerWave;
 
@@ -68,12 +91,12 @@ public class SurvivalSpawner : ServiceScript
             GameObject enemy = Instantiate(prefab, spawnPos, Quaternion.identity);
 
             // Ajustar estadísticas según la oleada
-            FlyingRangedEnemy flyer = enemy.GetComponent<FlyingRangedEnemy>();
+            FlyingRangedEnemy flyer = enemy.GetComponentInChildren<FlyingRangedEnemy>();
             if (flyer != null)
             {
                 flyer.speed += currentWave * enemySpeedIncrease;
                 flyer.damage += currentWave * enemyDamageIncrease;
-                // O puedes usar un multiplicador en el script si prefieres exponer campos
+                flyer.playerTarget = player;   // FIX: sin esto el enemigo no persigue ni dispara
             }
 
             // Suscribirnos a la muerte del enemigo para no depender solo de RemoveAll

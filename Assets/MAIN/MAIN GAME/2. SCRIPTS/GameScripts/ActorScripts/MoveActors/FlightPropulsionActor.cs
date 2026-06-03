@@ -49,7 +49,13 @@ public class FlightPropulsionActor : MoveActor
         if (d && right) moveX = 2f;
         if ((a && right) || (d && left)) moveX = 0f;
 
-        Vector3 rawInput = new Vector3(moveX, 0, moveZ);
+        // FIX: movimiento vertical en vuelo (antes la Y era siempre 0 -> no subía/bajaba).
+        // Botón derecho (RightButtonHeld) sube; botón izquierdo (LeftButtonHeld) baja.
+        float moveY = 0f;
+        if (input.RightButtonHeld) moveY += 1f;
+        if (input.LeftButtonHeld)  moveY -= 1f;
+
+        Vector3 rawInput = new Vector3(moveX, moveY, moveZ);
         float maxSpeed = PlayerParameters.MEDIUM_LINEAR_SPEED * linearSpeedMultiplier;
         Vector3 desiredVelocity = Vector3.ClampMagnitude(rawInput, 1f) * maxSpeed;
         float desiredAngularSpeed = torque * PlayerParameters.MEDIUM_ANGULAR_SPEED * angularSpeedMultiplier;
