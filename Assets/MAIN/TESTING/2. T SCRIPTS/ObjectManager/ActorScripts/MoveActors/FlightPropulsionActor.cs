@@ -18,24 +18,19 @@ public class FlightPropulsionActor : MoveActor
         base.StartExecution();
         targetVelocity = rb.linearVelocity;
         targetAngularVel = rb.angularVelocity.y;
-        if (showDebug) Debug.Log("FlightPropulsionActor: StartExecution");
     }
 
     public override void UpdateExecution()
     {
-        if (rb == null) return;
+        if (rb == null || input == null) return;
 
-        // Leer teclas individuales desde InputManager
         bool w = input.W, up = input.UpArrow;
         bool s = input.S, down = input.DownArrow;
         bool a = input.A, left = input.LeftArrow;
         bool d = input.D, right = input.RightArrow;
-        float ascendInput = input.AscendInput;
 
-        // ── Cálculo de empuje lineal (local) ─────────────────
         float moveX = 0f, moveZ = 0f, torque = 0f;
 
-        // Forward / Backward + Torque
         if (w && !up && !s && !down)          { moveZ = 1f; torque = 1f; }
         else if (!w && up && !s && !down)      { moveZ = 1f; torque = -1f; }
         else if (!w && !up && s && !down)      { moveZ = -1f; torque = -1f; }
@@ -46,7 +41,6 @@ public class FlightPropulsionActor : MoveActor
         else if (!w && up && s && !down)       { moveZ = 0f; torque = -1f; }
         else if (w && s)                       { moveZ = 0f; torque = 0f; }
 
-        // Lateral movement
         if (a && !d && !right) moveX = -1f;
         else if (!a && d && !left) moveX = 1f;
         else if (left && !a && !d && !right) moveX = -1f;
@@ -55,16 +49,11 @@ public class FlightPropulsionActor : MoveActor
         if (d && right) moveX = 2f;
         if ((a && right) || (d && left)) moveX = 0f;
 
-        // Vector de empuje local
-        Vector3 rawInput = new Vector3(moveX, ascendInput, moveZ);
+        Vector3 rawInput = new Vector3(moveX, 0, moveZ);
         float maxSpeed = PlayerParameters.MEDIUM_LINEAR_SPEED * linearSpeedMultiplier;
         Vector3 desiredVelocity = Vector3.ClampMagnitude(rawInput, 1f) * maxSpeed;
         float desiredAngularSpeed = torque * PlayerParameters.MEDIUM_ANGULAR_SPEED * angularSpeedMultiplier;
 
-        if (showDebug)
-            Debug.Log($"Flight: rawInput={rawInput} desiredVel={desiredVelocity} torque={torque}");
-
-        // Aceleraciones suaves
         float inputMag = rawInput.magnitude;
         float accel = maxSpeed * inputMag;
         targetVelocity = Vector3.MoveTowards(targetVelocity, desiredVelocity, accel * Time.deltaTime);
@@ -76,12 +65,8 @@ public class FlightPropulsionActor : MoveActor
         else
             targetAngularVel = Mathf.MoveTowards(targetAngularVel, 0f, maxSpeed * Time.deltaTime);
 
-        // Aplicar al Rigidbody
         Vector3 globalVel = playerTransform.TransformDirection(targetVelocity);
         rb.linearVelocity = globalVel;
         rb.angularVelocity = new Vector3(0f, targetAngularVel, 0f);
-
-        if (showDebug)
-            Debug.Log($"Flight: targetVel={targetVelocity} globalVel={globalVel} angVel={targetAngularVel:F2}");
     }
 }

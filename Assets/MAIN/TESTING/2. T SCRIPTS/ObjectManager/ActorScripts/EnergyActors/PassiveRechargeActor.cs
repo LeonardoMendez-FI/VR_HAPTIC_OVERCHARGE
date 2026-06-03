@@ -3,75 +3,50 @@ using UnityEngine;
 public class PassiveRechargeActor : EnergyActor
 {
     public FlightEnergyDrainActor flightDrainActor;
-    public float rechargeTimeMultiplier = 2f;
-    public float rechargeTime = 0f;
+    public MoveManager moveManager;   // asignado en inspector
 
-    [Header("Recharge Delay")]
+    [Header("Recharge Settings")]
+    public float rechargeTimeMultiplier = 2f;
     public float rechargeDelay = 3f;
 
     [Header("Debug")]
     public bool showDebug = false;
 
-    private MoveManager moveManager;
     private float rechargeRate;
     private float timeSinceStart;
-    private bool hasTouchedGround = false;
+    private bool hasTouchedGround;
+    private float _computedRechargeTime;  // BUG-09: variable local para no mutar el campo serializado
 
     public override bool MeetsRequirements()
     {
         if (!base.MeetsRequirements()) return false;
-        if (moveManager == null)
-            moveManager = (managerScript.electronicObject as Robot)?.moveManager;
         return moveManager != null && !moveManager.isFlying && !moveManager.isAttacking;
     }
 
     public override void StartExecution()
     {
         base.StartExecution();
-        if (rechargeTime <= 0f && flightDrainActor != null)
-            rechargeTime = flightDrainActor.hoverTime * rechargeTimeMultiplier;
-        if (rechargeTime > 0f)
-            rechargeRate = managerScript.max_energy / rechargeTime;
-        else
-            rechargeRate = 0f;
-
+        _computedRechargeTime = flightDrainActor != null ? flightDrainActor.hoverTime * rechargeTimeMultiplier : 10f;
+        rechargeRate = managerScript.max_energy / _computedRechargeTime;
         timeSinceStart = 0f;
         hasTouchedGround = false;
-        if (showDebug)
-            Debug.Log($"PassiveRecharge StartExecution: rate={rechargeRate:F2} delay={rechargeDelay}s");
     }
 
     public override void UpdateExecution()
     {
-        // Verificar contacto con el suelo (usando el ground check del MoveManager)
         if (!hasTouchedGround)
         {
             if (moveManager.IsGrounded())
             {
                 hasTouchedGround = true;
                 timeSinceStart = 0f;
-                if (showDebug) Debug.Log("PassiveRecharge: tocó el suelo, inicia retraso.");
             }
-            else
-            {
-                if (showDebug) Debug.Log("PassiveRecharge: aún en el aire...");
-                return;
-            }
+            else return;
         }
 
         timeSinceStart += Time.deltaTime;
-
-        if (timeSinceStart >= rechargeDelay && rechargeRate > 0f)
-        {
-            float rechargeThisFrame = rechargeRate * Time.deltaTime;
-            managerScript.modify_energy(rechargeThisFrame);
-            if (showDebug)
-                Debug.Log($"PassiveRecharge: +{rechargeThisFrame:F2}");
-        }
-        else if (showDebug && timeSinceStart < rechargeDelay)
-        {
-            Debug.Log($"PassiveRecharge: esperando {rechargeDelay - timeSinceStart:F1}s...");
-        }
+        if (timeSinceStart >= rechargeDelay)
+            managerScript.modify_energy(rechargeRate * Time.deltaTime);
     }
 
     public override void StopExecution()
@@ -79,6 +54,5 @@ public class PassiveRechargeActor : EnergyActor
         base.StopExecution();
         timeSinceStart = 0f;
         hasTouchedGround = false;
-        if (showDebug) Debug.Log("PassiveRecharge: ejecución detenida.");
     }
 }

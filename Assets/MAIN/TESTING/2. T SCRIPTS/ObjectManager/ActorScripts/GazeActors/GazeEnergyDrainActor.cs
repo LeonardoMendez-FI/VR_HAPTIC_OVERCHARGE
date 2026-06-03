@@ -11,7 +11,7 @@ public class GazeEnergyDrainActor : GazeActor
     [Header("Events")]
     public FloatEvent onTargetEnergyChanged;
     public DrainEvent onTargetFullyDrained;
-    public FloatEvent onEnergyAbsorbed;       // ← nuevo
+    public FloatEvent onEnergyAbsorbed;
 
     [HideInInspector] public float currentEnergyNorm;
     public bool IsDraining => is_executing;
@@ -23,16 +23,20 @@ public class GazeEnergyDrainActor : GazeActor
     {
         if (GazeManager == null || !GazeManager.IsLocked) return false;
         if (GazeManager.CurrentTarget == null) return false;
-
-        var go = (GazeManager.CurrentTarget as MonoBehaviour)?.gameObject;
-        if (go == null) return false;
-        var eo = go.GetComponent<ElectronicObject>();
-        if (eo == null) return false;
-        targetEnergy = eo.energyManager;
-        if (targetEnergy == null) return false;
-
-        targetVisual = go.GetComponentInChildren<GazeVisualController>();
         return true;
+    }
+
+    public override void StartExecution()
+    {
+        base.StartExecution();
+        // Cachear referencias una sola vez
+        var go = (GazeManager.CurrentTarget as MonoBehaviour)?.gameObject;
+        if (go != null)
+        {
+            var eo = go.GetComponent<ElectronicObject>();
+            targetEnergy = eo?.energyManager;
+            targetVisual = go.GetComponentInChildren<GazeVisualController>();
+        }
     }
 
     public override void UpdateExecution()
@@ -43,7 +47,7 @@ public class GazeEnergyDrainActor : GazeActor
         targetEnergy.modify_energy(-absorbed);
         currentEnergyNorm = targetEnergy.normalized_local;
         onTargetEnergyChanged?.Invoke(currentEnergyNorm);
-        onEnergyAbsorbed?.Invoke(absorbed);      // ← nuevo
+        onEnergyAbsorbed?.Invoke(absorbed);
 
         if (targetVisual != null)
             targetVisual.SetDrainIntensity(1f - currentEnergyNorm);

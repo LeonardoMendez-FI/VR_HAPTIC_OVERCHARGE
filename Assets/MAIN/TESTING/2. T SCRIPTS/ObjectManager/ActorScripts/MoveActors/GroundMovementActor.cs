@@ -22,27 +22,30 @@ public class GroundMovementActor : MoveActor
 
     public override void UpdateExecution()
     {
-        if (rb == null) return;
+        if (rb == null || input == null) return;
 
-        float rotInput = input.GroundRotInput; // A/D
-        Vector2 moveInput = input.MoveInput;   // flechas
+        float moveX = 0f, moveZ = 0f, rotInput = 0f;
+        if (input.UpArrow)    moveZ += 1f;
+        if (input.DownArrow)  moveZ -= 1f;
+        if (input.RightArrow) moveX += 1f;
+        if (input.LeftArrow)  moveX -= 1f;
+        if (input.D) rotInput += 1f;
+        if (input.A) rotInput -= 1f;
 
         if (showDebug)
-            Debug.Log($"Ground: Move=({moveInput.x:F2},{moveInput.y:F2}) Rot={rotInput:F2}");
+            Debug.Log($"Ground: Move=({moveX:F2},{moveZ:F2}) Rot={rotInput:F2}");
 
-        // Rotación
         float desiredAngularSpeed = rotInput * maxAngularSpeed;
         if (Mathf.Abs(rotInput) > 0.01f)
-            targetAngularVel = Mathf.MoveTowards(targetAngularVel, desiredAngularSpeed, maxAngularSpeed * Time.deltaTime); // aceleración simple
+            targetAngularVel = Mathf.MoveTowards(targetAngularVel, desiredAngularSpeed, maxAngularSpeed * Time.deltaTime);
         else
             targetAngularVel = Mathf.MoveTowards(targetAngularVel, 0f, maxAngularSpeed * Time.deltaTime);
 
-        // Movimiento horizontal
         Vector3 desiredDir = Vector3.zero;
-        if (moveInput.y > 0) desiredDir += playerTransform.forward;
-        if (moveInput.y < 0) desiredDir -= playerTransform.forward;
-        if (moveInput.x > 0) desiredDir += playerTransform.right;
-        if (moveInput.x < 0) desiredDir -= playerTransform.right;
+        if (moveZ > 0) desiredDir += playerTransform.forward;
+        if (moveZ < 0) desiredDir -= playerTransform.forward;
+        if (moveX > 0) desiredDir += playerTransform.right;
+        if (moveX < 0) desiredDir -= playerTransform.right;
         if (desiredDir.magnitude > 0.01f) desiredDir.Normalize();
 
         Vector3 desiredVelocity = desiredDir * maxLinearSpeed;

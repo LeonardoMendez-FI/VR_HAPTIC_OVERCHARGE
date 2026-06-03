@@ -3,7 +3,7 @@ using UnityEngine;
 public class HapticDamageActor : UIActor<StructManager>
 {
     [Header("References")]
-    public HapticManager hapticManager;
+    public HapticService hapticService;   // renombrado
     public Transform playerTransform;
 
     protected override void Subscribe()
@@ -18,8 +18,8 @@ public class HapticDamageActor : UIActor<StructManager>
 
     void OnPlayerDamaged(Vector3 attackerPosition)
     {
-        if (hapticManager == null || playerTransform == null) return;
+        if (hapticService == null || playerTransform == null) return;
         Vector3 direction = attackerPosition - playerTransform.position;
-        hapticManager.TriggerDamageFeedback(direction);
+        hapticService.TriggerDamageFeedback(direction);
     }
 }

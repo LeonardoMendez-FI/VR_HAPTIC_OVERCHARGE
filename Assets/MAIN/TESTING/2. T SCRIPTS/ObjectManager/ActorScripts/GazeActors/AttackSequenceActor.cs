@@ -1,23 +1,29 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 public class AttackSequenceActor : GazeActor
 {
     [Header("Attack Settings")]
     public float attackDuration = 2f;
 
-    [Header("Haptic Feedback")]
-    public HapticManager hapticManager;
+    [Header("Events (wire in Inspector)")]
+    public UnityEvent OnAttackStarted;
+    public UnityEvent OnAttackEnded;
+    public UnityEvent OnEnemyDestroyed;
 
     [Header("References")]
     public GazeEnergyDrainActor drainActor;
-    public AttackManager attackManager;
-    public MoveManager moveManager;
 
     private bool isAttacking;
     private float attackTimer;
     private IGazeTarget currentTarget;
     private ElectronicObject targetElectronics;
     private GazeVisualController targetVisual;
+
+    /// <summary>
+    /// Propiedad pública que indica si el ataque está en curso (útil para otros actores como EnemyDepletedActor).
+    /// </summary>
+    public bool IsDraining => isAttacking;
 
     void Start()
     {
@@ -42,13 +48,7 @@ public class AttackSequenceActor : GazeActor
         targetElectronics = go?.GetComponent<ElectronicObject>();
         targetVisual = go?.GetComponentInChildren<GazeVisualController>();
 
-        // Bloquear movimiento del jugador
-        moveManager?.SetAttacking(true);
-        // Iniciar ataque (dispara el evento que activa la sobreimpresión roja)
-        attackManager?.StartAttack();
-
-        hapticManager?.StartAttackEffect(attackDuration);
-
+        OnAttackStarted?.Invoke();
         StartExecution();
     }
 
@@ -64,12 +64,8 @@ public class AttackSequenceActor : GazeActor
 
         attackTimer += Time.deltaTime;
         float progress = Mathf.Clamp01(attackTimer / attackDuration);
-
-        float maxEnergy = targetElectronics.MaxEnergy();
-        float damage = (maxEnergy / attackDuration) * Time.deltaTime;
+        float damage = (targetElectronics.MaxEnergy() / attackDuration) * Time.deltaTime;
         targetElectronics.TakeDamage(damage);
-
-        attackManager?.RegisterDamageDealt(damage);
 
         if (targetVisual != null)
             targetVisual.SetAttackProgress(progress);
@@ -82,20 +78,8 @@ public class AttackSequenceActor : GazeActor
 
     void DestroyEnemy()
     {
-        // Liberar el objetivo del GazeManager antes de destruir el objeto
+        OnEnemyDestroyed?.Invoke();
         GazeManager?.ForceReleaseTarget();
-
-        hapticManager?.EndAttackEffect();
-        attackManager?.AddElimination();
-        attackManager?.EndAttack();
-
-        if (currentTarget?.TargetTransform != null)
-            Destroy(currentTarget.TargetTransform.gameObject);
-
-        // Desbloquear movimiento
-        moveManager?.SetAttacking(false);
-
-        isAttacking = false;
         StopExecution();
     }
 
@@ -105,9 +89,7 @@ public class AttackSequenceActor : GazeActor
         if (isAttacking)
         {
             isAttacking = false;
-            hapticManager?.EndAttackEffect();
-            attackManager?.EndAttack();
-            moveManager?.SetAttacking(false);
+            OnAttackEnded?.Invoke();
         }
     }
 }

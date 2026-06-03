@@ -21,24 +21,17 @@ public class JumpActor : MoveActor
 
     public override void UpdateExecution()
     {
-        if (rb == null) return;
+        if (rb == null || input == null) return;
 
-        // Usar el ground check del MoveManager (única fuente de verdad)
         bool isGrounded = moveManager.IsGrounded();
 
         if (isGrounded)
-        {
             verticalVelocity = 0f;
-        }
         else
-        {
             verticalVelocity += PlayerParameters.GRAVITY * Time.deltaTime;
-        }
 
         if (input.JumpPressed && isGrounded)
-        {
             verticalVelocity = jumpForce;
-        }
 
         Vector3 vel = rb.linearVelocity;
         vel.y = verticalVelocity;

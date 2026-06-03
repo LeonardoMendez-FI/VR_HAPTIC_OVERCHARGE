@@ -7,13 +7,15 @@ public class ManagerScript : MonoBehaviour
     public ElectronicObject electronicObject;
 
     [Header("Actors")]
-    public List<ActorBase> actors = new();
+    [SerializeField] private List<ActorBase> _actors = new List<ActorBase>();
+
+    public IReadOnlyList<ActorBase> actors => _actors;
 
     protected ActorBase current_actor = null;
 
     public virtual void Update()
     {
-        if (actors.Count == 0)
+        if (_actors.Count == 0)
             return;
 
         if (current_actor != null && current_actor.Solve())
@@ -21,7 +23,7 @@ public class ManagerScript : MonoBehaviour
 
         current_actor = null;
 
-        foreach (ActorBase actor in actors)
+        foreach (ActorBase actor in _actors)
         {
             if (actor.Solve())
             {
