@@ -9,14 +9,24 @@ public class ReticlePointerView : ViewBase
     protected override void Subscribe()
     {
         if (gazeManager != null)
+        {
             gazeManager.OnGazeTargetChanged += OnTargetChanged;
+            gazeManager.OnGazeTargetLost += HandleTargetLost;
+        }
     }
 
     protected override void Unsubscribe()
     {
         if (gazeManager != null)
+        {
             gazeManager.OnGazeTargetChanged -= OnTargetChanged;
+            gazeManager.OnGazeTargetLost -= HandleTargetLost;
+        }
     }
+
+    // FIX: GazeManager no dispara OnGazeTargetChanged(null) al dejar de mirar.
+    // Escuchamos OnGazeTargetLost para restablecer el retículo (mostrar el puntero).
+    private void HandleTargetLost() => OnTargetChanged(null);
 
     private void Start()
     {

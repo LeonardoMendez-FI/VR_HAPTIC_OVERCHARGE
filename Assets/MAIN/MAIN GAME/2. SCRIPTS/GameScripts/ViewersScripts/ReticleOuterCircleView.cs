@@ -19,6 +19,7 @@ public class ReticleOuterCircleView : ViewBase
         {
             gazeManager.OnGazeTargetChanged += OnTargetChanged;
             gazeManager.OnGazeTargetFocused += OnTargetFocused;
+            gazeManager.OnGazeTargetLost += HandleTargetLost;
         }
     }
 
@@ -28,8 +29,13 @@ public class ReticleOuterCircleView : ViewBase
         {
             gazeManager.OnGazeTargetChanged -= OnTargetChanged;
             gazeManager.OnGazeTargetFocused -= OnTargetFocused;
+            gazeManager.OnGazeTargetLost -= HandleTargetLost;
         }
     }
+
+    // FIX: GazeManager no dispara OnGazeTargetChanged(null) al dejar de mirar.
+    // Escuchamos OnGazeTargetLost para soltar el anillo y el EnergyManager del objetivo anterior.
+    private void HandleTargetLost() => OnTargetChanged(null);
 
     private void Start()
     {
@@ -43,7 +49,7 @@ public class ReticleOuterCircleView : ViewBase
         {
             targetEnergy = null;
             isApproaching = false;
-            outerCircle.fillAmount = 0f;
+            if (outerCircle != null) outerCircle.fillAmount = 0f;
             return;
         }
 
