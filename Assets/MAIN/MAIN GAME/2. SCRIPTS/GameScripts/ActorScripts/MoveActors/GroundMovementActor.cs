@@ -5,12 +5,15 @@ public class GroundMovementActor : MoveActor
     private Vector3 targetVelocity;
     private float targetAngularVel;
 
+    [Header("Permissions")]
+    public PlayerPermissions permissions;
+
     [Header("Debug")]
     public bool showDebug = false;
 
     public override bool MeetsRequirements()
     {
-        return base.MeetsRequirements() && !moveManager.isFlying && rb != null;
+        return base.MeetsRequirements() && !moveManager.isFlying && rb != null && permissions.canMove;
     }
 
     public override void StartExecution()
@@ -32,9 +35,6 @@ public class GroundMovementActor : MoveActor
         if (input.D) rotInput += 1f;
         if (input.A) rotInput -= 1f;
 
-        if (showDebug)
-            Debug.Log($"Ground: Move=({moveX:F2},{moveZ:F2}) Rot={rotInput:F2}");
-
         float desiredAngularSpeed = rotInput * maxAngularSpeed;
         if (Mathf.Abs(rotInput) > 0.01f)
             targetAngularVel = Mathf.MoveTowards(targetAngularVel, desiredAngularSpeed, maxAngularSpeed * Time.deltaTime);
@@ -55,7 +55,7 @@ public class GroundMovementActor : MoveActor
             targetVelocity = Vector3.MoveTowards(targetVelocity, Vector3.zero, maxLinearSpeed * Time.deltaTime);
 
         Vector3 vel = targetVelocity;
-        vel.y = rb.linearVelocity.y;
+        vel.y = rb.linearVelocity.y; // preservar la velocidad vertical del Rigidbody (gravedad/saltos)
         rb.linearVelocity = vel;
         rb.angularVelocity = new Vector3(0f, targetAngularVel, 0f);
     }

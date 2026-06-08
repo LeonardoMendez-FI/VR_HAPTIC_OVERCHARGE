@@ -8,17 +8,21 @@ public class FlightEnergyDrainActor : EnergyActor
     [Range(0, 3)] public float rotationCostMultiplier = 0.5f;
 
     [Header("References")]
-    public MoveManager moveManager;   // asignado en inspector, eliminando cast a Robot
-
-    [Header("Debug")]
-    public bool showDebug = false;
+    public MoveManager moveManager;
+    public GazeEnergyDrainActor gazeDrainActor;
+    public PlayerPermissions permissions;   // Añadido
 
     private float baseDrainRate;
 
     public override bool MeetsRequirements()
     {
         if (!base.MeetsRequirements()) return false;
-        return moveManager != null && moveManager.isFlying && !moveManager.isAttacking;
+        if (moveManager == null || permissions == null) return false;
+        if (!moveManager.isFlying || moveManager.isAttacking) return false;
+        if (!permissions.flightEnergyDrainEnabled) return false;
+        if (gazeDrainActor != null && gazeDrainActor.IsDraining) return false;
+
+        return true;
     }
 
     public override void StartExecution()

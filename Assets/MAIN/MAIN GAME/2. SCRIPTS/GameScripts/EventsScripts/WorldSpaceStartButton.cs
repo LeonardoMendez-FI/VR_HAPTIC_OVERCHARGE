@@ -1,29 +1,31 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Se coloca en el botón de inicio en World Space.
-/// Requiere un GazeTargetBehaviour en el mismo GameObject.
-/// Cuando el jugador hace gaze lock, carga la escena del juego.
-/// </summary>
 public class WorldSpaceStartButton : MonoBehaviour
 {
     [Header("Scene to Load")]
-    public string gameSceneName = "GameScene";
+    public string gameSceneName = "Level1";
 
-    private GazeTargetBehaviour gazeTarget;
-    private bool isLocked = false;
+    [Header("Auto-hide")]
+    [Tooltip("Si es true, el botón se oculta al iniciar la escena (útil para el tutorial).")]
+    public bool hideOnStart = false;
 
-    void Awake()
+    private bool triggered = false;
+
+    void Start()
     {
-        gazeTarget = GetComponent<GazeTargetBehaviour>();
+        if (hideOnStart)
+            gameObject.SetActive(false);
     }
 
+    /// <summary>
+    /// Llamado por GazeTargetBehaviour.OnGazeFocusedInternal() cuando se hace lock sobre este objeto.
+    /// </summary>
     public void OnGazeLocked()
     {
-        if (isLocked) return;
-        isLocked = true;
-        Debug.Log("[WorldSpaceStartButton] Gaze locked. Loading game scene...");
+        if (triggered) return;
+        triggered = true;
+        Debug.Log("[WorldSpaceStartButton] Cargando escena: " + gameSceneName);
         SceneManager.LoadScene(gameSceneName);
     }
 }

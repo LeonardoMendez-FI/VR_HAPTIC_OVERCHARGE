@@ -38,9 +38,14 @@ public class EndGameUI : MonoBehaviour
         if (gameSessionData != null)
             gameSessionData.ResetData();
 
+        // Destruir el jugador (que contiene todos los servicios globales)
+        var player = FindFirstObjectByType<PlayerRobot>();
+        if (player != null)
+            Destroy(player.gameObject);
+
         if (GamePauseController.Instance != null)
             GamePauseController.Instance.ResumeGame();
 
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        SceneManager.LoadScene("Init");
     }
 }

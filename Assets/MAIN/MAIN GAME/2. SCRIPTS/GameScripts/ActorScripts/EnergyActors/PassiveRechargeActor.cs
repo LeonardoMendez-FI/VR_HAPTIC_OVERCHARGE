@@ -3,7 +3,8 @@ using UnityEngine;
 public class PassiveRechargeActor : EnergyActor
 {
     public FlightEnergyDrainActor flightDrainActor;
-    public MoveManager moveManager;   // asignado en inspector
+    public MoveManager moveManager;
+    public GazeEnergyDrainActor gazeDrainActor;   // <-- nuevo: arrastra el GazeEnergyDrainActor del jugador
 
     [Header("Recharge Settings")]
     public float rechargeTimeMultiplier = 2f;
@@ -15,12 +16,18 @@ public class PassiveRechargeActor : EnergyActor
     private float rechargeRate;
     private float timeSinceStart;
     private bool hasTouchedGround;
-    private float _computedRechargeTime;  // BUG-09: variable local para no mutar el campo serializado
+    private float _computedRechargeTime;
 
     public override bool MeetsRequirements()
     {
         if (!base.MeetsRequirements()) return false;
-        return moveManager != null && !moveManager.isFlying && !moveManager.isAttacking;
+        if (moveManager == null) return false;
+
+        // Solo en suelo, sin atacar, y sin estar drenando a un enemigo
+        if (moveManager.isFlying || moveManager.isAttacking) return false;
+        if (gazeDrainActor != null && gazeDrainActor.IsDraining) return false;   // <-- pausa recarga pasiva
+
+        return true;
     }
 
     public override void StartExecution()
@@ -30,6 +37,7 @@ public class PassiveRechargeActor : EnergyActor
         rechargeRate = managerScript.max_energy / _computedRechargeTime;
         timeSinceStart = 0f;
         hasTouchedGround = false;
+        if (showDebug) Debug.Log("[PassiveRecharge] StartExecution. Tasa recarga: " + rechargeRate);
     }
 
     public override void UpdateExecution()
@@ -40,13 +48,22 @@ public class PassiveRechargeActor : EnergyActor
             {
                 hasTouchedGround = true;
                 timeSinceStart = 0f;
+                if (showDebug) Debug.Log("[PassiveRecharge] Tocó el suelo, inicia cuenta atrás.");
             }
-            else return;
+            else
+            {
+                return;
+            }
         }
 
         timeSinceStart += Time.deltaTime;
-        if (timeSinceStart >= rechargeDelay)
-            managerScript.modify_energy(rechargeRate * Time.deltaTime);
+
+        if (timeSinceStart >= rechargeDelay && rechargeRate > 0f)
+        {
+            float rechargeThisFrame = rechargeRate * Time.deltaTime;
+            managerScript.modify_energy(rechargeThisFrame);
+            if (showDebug) Debug.Log($"[PassiveRecharge] +{rechargeThisFrame:F2} energía. Actual: {managerScript.normalized_local:F2}");
+        }
     }
 
     public override void StopExecution()
@@ -54,5 +71,6 @@ public class PassiveRechargeActor : EnergyActor
         base.StopExecution();
         timeSinceStart = 0f;
         hasTouchedGround = false;
+        if (showDebug) Debug.Log("[PassiveRecharge] StopExecution.");
     }
 }

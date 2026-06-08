@@ -6,14 +6,32 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/MAIN/MAIN GAME/1. SCENES/1-MENU.unity
+    path: Assets/MAIN/MAIN GAME/1. SCENES/0-INIT.unity
+    guid: 0b3970d3354e02341a49a6fef8a34655
+  - enabled: 1
+    path: Assets/MAIN/MAIN GAME/1. SCENES/1-START MENU.unity
+    guid: 8ed687fb469757f4187643675dcbe3ba
+  - enabled: 1
+    path: Assets/MAIN/MAIN GAME/1. SCENES/2-TUTORIAL MENU.unity
     guid: 0d96aeba5da2c124d9bd110beee2c5de
   - enabled: 1
-    path: Assets/MAIN/MAIN GAME/1. SCENES/2-LOOP LEVEL.unity
-    guid: e88e7a4095142c94783a5ca3bb38b90b
+    path: Assets/MAIN/MAIN GAME/1. SCENES/3-LEVEL1.unity
+    guid: 9677add9ed65a7c4a88339a1c7413dc1
   - enabled: 1
-    path: Assets/MAIN/MAIN GAME/1. SCENES/3-GAME END.unity
-    guid: 6820c7b0ea61b7e4caae33be1dd66cb9
+    path: Assets/MAIN/MAIN GAME/1. SCENES/3-LEVEL2.unity
+    guid: 29bc25bf14a5cb447bd6187a030d02fd
+  - enabled: 1
+    path: Assets/MAIN/MAIN GAME/1. SCENES/3-LEVEL3.unity
+    guid: 37a6e5fa08513cc44a411856c4f562dd
+  - enabled: 1
+    path: Assets/MAIN/MAIN GAME/1. SCENES/3-LEVEL4.unity
+    guid: 872dc10d9206d7e4497db325d8a9e886
+  - enabled: 1
+    path: Assets/MAIN/MAIN GAME/1. SCENES/3-LEVEL5.unity
+    guid: 721120630c635244f8cfb1b305a79b92
+  - enabled: 1
+    path: Assets/MAIN/MAIN GAME/1. SCENES/3-LEVEL6.unity
+    guid: 70eafd3e288ac9d438bad2ac06aa8dcb
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 3658b1619a4eec244b46e23771c403a4, type: 2}

@@ -4,8 +4,13 @@ using UnityEngine.Events;
 public class StructManager : ManagerScript
 {
     [Header("Structure Settings")]
+    [Tooltip("Si es true, la salud máxima se calcula como energía máxima * ENERGY_TO_STRUCT.")]
+    public bool useEnergyBasedHealth = true;   // nuevo: por defecto, automático
+
+    [Tooltip("Salud máxima fija (solo si useEnergyBasedHealth = false).")]
     public float maxHealth = 100f;
-    public float currHealth;
+
+    [HideInInspector] public float currHealth;
 
     [Header("Events")]
     public FloatEvent OnStructureChanged;
@@ -17,6 +22,16 @@ public class StructManager : ManagerScript
 
     void Start()
     {
+        if (useEnergyBasedHealth)
+        {
+            // Obtener el EnergyManager del mismo ElectronicObject
+            EnergyManager energy = electronicObject?.energyManager;
+            if (energy != null)
+                maxHealth = energy.max_energy * PlayerParameters.ENERGY_TO_STRUCT;
+            else
+                Debug.LogWarning("[StructManager] No se encontró EnergyManager para calcular maxHealth automático. Usando valor manual.");
+        }
+
         currHealth = maxHealth;
         isDead = false;
         _lastSentNorm = 1f;

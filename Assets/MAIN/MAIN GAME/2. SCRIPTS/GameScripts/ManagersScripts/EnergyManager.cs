@@ -3,8 +3,14 @@ using UnityEngine.Events;
 
 public class EnergyManager : ManagerScript
 {
-    [Header("Global multiplier")]
-    [Range(0, 2)] public float energy_multiplier = 1f;
+    [Header("Configuration")]
+    [Range(0, 2)] public float energy_multiplier = 1f;   // Solo se usa si no usamos drainTime
+
+    [Header("Enemy drain time (optional)")]
+    [Tooltip("Si es true, la energía máxima se calcula como DrainRate * drainTime.")]
+    public bool useDrainTime = false;
+    [Tooltip("Tiempo en segundos que tarda en drenarse este enemigo.")]
+    public float drainTime = 2f;
 
     [Header("Debug")]
     public bool showDebug = false;
@@ -22,7 +28,14 @@ public class EnergyManager : ManagerScript
 
     void Awake()
     {
-        max_energy = PlayerParameters.MAX_ENERGY * energy_multiplier;
+        if (useDrainTime)
+        {
+            max_energy = PlayerParameters.DrainRate * drainTime;
+        }
+        else
+        {
+            max_energy = PlayerParameters.MAX_ENERGY * energy_multiplier;
+        }
         curr_energy = max_energy;
         is_empty = false;
         is_full = true;

@@ -14,7 +14,11 @@ public class GazeManager : ManagerScript
     public bool resetProgressOnTargetChange = true;
 
     [Header("Sticky Stabilization")]
-    public StickyTargetLogic stickyTargetLogic;   // renombrado
+    public StickyTargetLogic stickyTargetLogic;
+
+    [Header("Lock Grace")]
+    [Tooltip("Tiempo en segundos que el lock se mantiene tras perder el objetivo.")]
+    public float lockGraceDuration = 3f;
 
     public IGazeTarget CurrentTarget { get; private set; }
     public float FocusProgress { get; private set; }
@@ -26,6 +30,8 @@ public class GazeManager : ManagerScript
     public event Action<float> OnGazeFocusProgress;
 
     private float prevFocusProgress;
+    private IGazeTarget lockedTarget;       // objetivo al que se hizo lock
+    private float lockGraceTimer;           // cuenta atrás para perder el lock
 
     private void Awake()
     {
@@ -43,6 +49,7 @@ public class GazeManager : ManagerScript
 
         HandleTargetTransition(stabilizedTarget);
         UpdateFocusProgress();
+        UpdateLockGrace();
 
         if (!Mathf.Approximately(prevFocusProgress, FocusProgress))
         {
@@ -59,17 +66,33 @@ public class GazeManager : ManagerScript
 
     private void HandleTargetTransition(IGazeTarget newTarget)
     {
+        // Si estamos en gracia y reaparece el mismo objetivo lockeado
+        if (IsLocked && lockedTarget != null && newTarget == lockedTarget)
+        {
+            // Cancelar gracia y restaurar el objetivo sin perder el lock
+            lockGraceTimer = 0f;
+            if (CurrentTarget == null)
+            {
+                CurrentTarget = newTarget;
+                // No llamamos a OnGazeEnter porque ya estaba lockeado, solo notificamos el cambio
+                OnGazeTargetChanged?.Invoke(CurrentTarget);
+            }
+            return;
+        }
+
+        // Si hay un nuevo target diferente y estamos lockeados, forzar pérdida del lock
+        if (IsLocked && lockedTarget != null && newTarget != null && newTarget != lockedTarget)
+        {
+            ForceReleaseLock();
+        }
+
+        // Flujo normal de cambio de objetivo
         if (newTarget == CurrentTarget) return;
 
         if (CurrentTarget != null)
         {
             CurrentTarget.OnGazeExit();
-            IsLocked = false;
-
-            if (resetProgressOnTargetChange)
-                FocusProgress = 0f;
-
-            OnGazeTargetLost?.Invoke();
+            OnGazeTargetLost?.Invoke(); // se invoca inmediatamente al perder el objetivo
         }
 
         CurrentTarget = newTarget;
@@ -78,6 +101,12 @@ public class GazeManager : ManagerScript
         {
             CurrentTarget.OnGazeEnter();
             OnGazeTargetChanged?.Invoke(CurrentTarget);
+        }
+        else if (IsLocked)
+        {
+            // Se perdió el objetivo pero estamos lockeados → iniciar gracia
+            lockGraceTimer = lockGraceDuration;
+            OnGazeTargetLost?.Invoke(); // notificar que se perdió visualmente
         }
     }
 
@@ -90,14 +119,48 @@ public class GazeManager : ManagerScript
             if (!IsLocked && FocusProgress >= 1f)
             {
                 IsLocked = true;
+                lockedTarget = CurrentTarget;
                 CurrentTarget.OnGazeFocused();
                 OnGazeTargetFocused?.Invoke(CurrentTarget);
             }
         }
-        else
+        else if (!IsLocked)
         {
+            // Sin lock y sin objetivo, decaer
             FocusProgress = Mathf.Clamp01(FocusProgress - Time.deltaTime * decayRate);
         }
+    }
+
+    private void UpdateLockGrace()
+    {
+        if (lockGraceTimer > 0f)
+        {
+            lockGraceTimer -= Time.deltaTime;
+            if (lockGraceTimer <= 0f)
+            {
+                // La gracia expiró → perder el lock definitivamente
+                ForceReleaseLock();
+            }
+        }
+    }
+
+    private void ForceReleaseLock()
+    {
+        if (!IsLocked) return;
+
+        IsLocked = false;
+        FocusProgress = 0f;
+        lockGraceTimer = 0f;
+        lockedTarget = null;
+
+        if (CurrentTarget != null)
+        {
+            CurrentTarget.OnGazeExit();
+            CurrentTarget = null;
+        }
+
+        OnGazeTargetLost?.Invoke();
+        OnGazeTargetChanged?.Invoke(null);
     }
 
     private IGazeTarget DetectTarget()
@@ -122,13 +185,7 @@ public class GazeManager : ManagerScript
 
     public void ForceReleaseTarget()
     {
-        HandleTargetTransition(null);
+        ForceReleaseLock(); // ya se encarga de limpiar todo
         stickyTargetLogic?.ClearSticky();
-
-        foreach (var actor in actors)
-        {
-            if (actor is DetectionVisualActor visualActor)
-                visualActor.ForceClear();
-        }
     }
 }

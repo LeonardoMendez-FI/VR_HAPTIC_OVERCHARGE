@@ -47,6 +47,7 @@ MonoBehaviour:
   managerScript: {fileID: 5220023222284394945}
   linearSpeedMultiplier: 1
   angularSpeedMultiplier: 1
+  permissions: {fileID: 0}
   showDebug: 0
 --- !u!1 &1137652318659003634
 GameObject:
@@ -93,7 +94,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   managerScript: {fileID: 367986514023954492}
-  drainRate: 5
   onTargetEnergyChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -197,6 +197,7 @@ MonoBehaviour:
   managerScript: {fileID: 5220023222284394945}
   linearSpeedMultiplier: 1
   angularSpeedMultiplier: 1
+  permissions: {fileID: 0}
   showDebug: 0
 --- !u!1 &3153603396798363051
 GameObject:
@@ -209,7 +210,7 @@ GameObject:
   - component: {fileID: 2984791711756871062}
   - component: {fileID: 8947631824423695246}
   m_Layer: 0
-  m_Name: EnergyDrain
+  m_Name: FlightEnergyDrain
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -246,8 +247,9 @@ MonoBehaviour:
   hoverTime: 45
   movementCostMultiplier: 1.5
   rotationCostMultiplier: 0.5
-  moveManager: {fileID: 0}
-  showDebug: 1
+  moveManager: {fileID: 5220023222284394945}
+  gazeDrainActor: {fileID: 1084735408623958527}
+  permissions: {fileID: 0}
 --- !u!1 &3423941265417433194
 GameObject:
   m_ObjectHideFlags: 0
@@ -295,9 +297,56 @@ MonoBehaviour:
   managerScript: {fileID: 4924685897378237651}
   flightDrainActor: {fileID: 8947631824423695246}
   moveManager: {fileID: 5220023222284394945}
+  gazeDrainActor: {fileID: 1084735408623958527}
   rechargeTimeMultiplier: 1.5
   rechargeDelay: 3
   showDebug: 1
+--- !u!1 &5402429505911327864
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 76406404660930387}
+  - component: {fileID: 3085997666017750240}
+  m_Layer: 0
+  m_Name: AbsorbEnergy
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &76406404660930387
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5402429505911327864}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6295523815154155841}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3085997666017750240
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5402429505911327864}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a31eaeb9f40a2e45b60740e7aae11f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  managerScript: {fileID: 4924685897378237651}
+  drainActor: {fileID: 1084735408623958527}
 --- !u!1 &5675132444493103196
 GameObject:
   m_ObjectHideFlags: 0
@@ -343,7 +392,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   managerScript: {fileID: 367986514023954492}
-  attackDuration: 1.5
+  attackDuration: 0.7
   OnAttackStarted:
     m_PersistentCalls:
       m_Calls: []
@@ -354,6 +403,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   drainActor: {fileID: 1084735408623958527}
+  playerEnergyManager: {fileID: 4924685897378237651}
 --- !u!1 &6512444973231535981
 GameObject:
   m_ObjectHideFlags: 0
@@ -447,6 +497,7 @@ MonoBehaviour:
   linearSpeedMultiplier: 1
   angularSpeedMultiplier: 1
   jumpForceMultiplier: 1
+  permissions: {fileID: 0}
 --- !u!1 &6640566148121316994
 GameObject:
   m_ObjectHideFlags: 0
@@ -611,6 +662,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StructManager
   electronicObject: {fileID: 1186708286397018274}
   _actors: []
+  useEnergyBasedHealth: 1
   maxHealth: 100
   currHealth: 0
   OnStructureChanged:
@@ -654,6 +706,7 @@ Transform:
   m_Children:
   - {fileID: 2984791711756871062}
   - {fileID: 4021304664636097405}
+  - {fileID: 76406404660930387}
   m_Father: {fileID: 5723622779787184629}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4924685897378237651
@@ -672,7 +725,10 @@ MonoBehaviour:
   _actors:
   - {fileID: 8947631824423695246}
   - {fileID: 7533256010814697398}
+  - {fileID: 3085997666017750240}
   energy_multiplier: 1
+  useDrainTime: 0
+  drainTime: 2
   showDebug: 1
   OnEnergyChanged:
     m_PersistentCalls:
@@ -797,15 +853,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   electronicObject: {fileID: 1186708286397018274}
   _actors:
-  - {fileID: 4608068131759338032}
   - {fileID: 1084735408623958527}
   - {fileID: 5747165271238580120}
+  - {fileID: 4608068131759338032}
   gazeOrigin: {fileID: 0}
   gazeLayerMask:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 192
   maxGazeDistance: 20
   focusThreshold: 1.5
   decayRate: 0.6
   resetProgressOnTargetChange: 1
   stickyTargetLogic: {fileID: 5346258679991485329}
+  lockGraceDuration: 3

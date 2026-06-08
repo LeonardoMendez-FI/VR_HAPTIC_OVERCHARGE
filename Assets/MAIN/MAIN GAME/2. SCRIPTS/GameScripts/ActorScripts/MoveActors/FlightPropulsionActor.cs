@@ -5,12 +5,16 @@ public class FlightPropulsionActor : MoveActor
     private Vector3 targetVelocity;
     private float targetAngularVel;
 
+    [Header("Permissions")]
+    public PlayerPermissions permissions;
+
     [Header("Debug")]
     public bool showDebug = false;
 
     public override bool MeetsRequirements()
     {
-        return base.MeetsRequirements() && moveManager.isFlying && rb != null;
+        return base.MeetsRequirements() && moveManager.isFlying && rb != null &&
+               (permissions.canMove || permissions.canRotate);
     }
 
     public override void StartExecution()
@@ -49,8 +53,6 @@ public class FlightPropulsionActor : MoveActor
         if (d && right) moveX = 2f;
         if ((a && right) || (d && left)) moveX = 0f;
 
-        // FIX: movimiento vertical en vuelo (antes la Y era siempre 0 -> no subía/bajaba).
-        // Botón derecho (RightButtonHeld) sube; botón izquierdo (LeftButtonHeld) baja.
         float moveY = 0f;
         if (input.RightButtonHeld) moveY += 1f;
         if (input.LeftButtonHeld)  moveY -= 1f;

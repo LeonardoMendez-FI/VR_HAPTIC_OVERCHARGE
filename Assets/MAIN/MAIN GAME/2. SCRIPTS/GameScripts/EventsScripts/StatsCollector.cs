@@ -7,17 +7,15 @@ public class StatsCollector : MonoBehaviour
     public AttackManager attackManager;
     public StructManager structManager;
     public GazeEnergyDrainActor drainActor;
-    public LevelService levelService;
     public EndGameUI endGameUI;
 
     [Header("Score Multipliers")]
-    public float pLevel     = 100f;   // puntos por nivel alcanzado
-    public float pRobots    = 10f;    // puntos por robot destruido
-    public float pMachines  = 50f;    // puntos por máquina destruida
-    public float pEnergy    = 1f;     // puntos por unidad de energía absorbida
-    public float pTime      = -1f;    // penalización por segundo (negativo = menos tiempo mejor)
+    public float pLevel     = 100f;
+    public float pRobots    = 10f;
+    public float pMachines  = 50f;
+    public float pEnergy    = 1f;
+    public float pTime      = -1f;
 
-    // Contadores internos
     private int robotsDestroyed;
     private int machinesDestroyed;
     private float damageDealt;
@@ -47,8 +45,6 @@ public class StatsCollector : MonoBehaviour
         }
         if (drainActor != null)
             drainActor.onEnergyAbsorbed.AddListener(OnEnergyAbsorbed);
-        if (levelService != null)
-            levelService.OnMachinesRemainingChanged.AddListener(OnMachinesRemainingChanged);
     }
 
     void OnDisable()
@@ -65,8 +61,6 @@ public class StatsCollector : MonoBehaviour
         }
         if (drainActor != null)
             drainActor.onEnergyAbsorbed.RemoveListener(OnEnergyAbsorbed);
-        if (levelService != null)
-            levelService.OnMachinesRemainingChanged.RemoveListener(OnMachinesRemainingChanged);
     }
 
     void OnElimination(int count) => robotsDestroyed = count;
@@ -84,15 +78,14 @@ public class StatsCollector : MonoBehaviour
 
     void OnEnergyAbsorbed(float amount) => energyAbsorbed += amount;
 
-    // Contar máquinas destruidas a partir del cambio en la cantidad restante
-    // (se asume que al inicio levelService conoce el total)
-    private int lastMachinesRemaining = -1;
-    void OnMachinesRemainingChanged(int remaining)
+    public void SetLevel(int level)
     {
-        if (lastMachinesRemaining < 0) lastMachinesRemaining = remaining;
-        int destroyed = lastMachinesRemaining - remaining;
-        if (destroyed > 0) machinesDestroyed += destroyed;
-        lastMachinesRemaining = remaining;
+        levelReached = level;
+    }
+
+    public void RegisterMachineDestroyed()
+    {
+        machinesDestroyed++;
     }
 
     public void EndGame(bool victory)
@@ -101,9 +94,7 @@ public class StatsCollector : MonoBehaviour
         gameEnded = true;
 
         gameTime = Time.time - startTime;
-        levelReached = levelService != null ? levelService.currentLevel : 1;
 
-        // Calcular puntuación
         float score = levelReached * pLevel
                     + robotsDestroyed * pRobots
                     + machinesDestroyed * pMachines
@@ -123,18 +114,15 @@ public class StatsCollector : MonoBehaviour
             victory = victory
         };
 
-        // Guardar partida actual
         databaseService?.SaveCurrentRun(currentRun);
 
-        // Comparar con la mejor
         var bestRun = databaseService?.GetBestRun() ?? new RunRecord();
         if (currentRun.score > bestRun.score)
         {
             databaseService?.SaveBestRun(currentRun);
-            bestRun = currentRun; // para mostrarla en la UI
+            bestRun = currentRun;
         }
 
-        // Mostrar UI final
         endGameUI?.Show(currentRun, bestRun);
     }
 }

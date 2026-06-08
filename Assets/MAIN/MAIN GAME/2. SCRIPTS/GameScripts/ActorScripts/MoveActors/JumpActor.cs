@@ -5,8 +5,10 @@ public class JumpActor : MoveActor
     [Header("Jump Multiplier")]
     [Range(0, 2)] public float jumpForceMultiplier = 1f;
 
+    [Header("Permissions")]
+    public PlayerPermissions permissions;
+
     private float jumpForce;
-    private float verticalVelocity;
 
     protected override void Start()
     {
@@ -16,7 +18,9 @@ public class JumpActor : MoveActor
 
     public override bool MeetsRequirements()
     {
-        return base.MeetsRequirements() && !moveManager.isFlying && rb != null;
+        // Ahora incluye la verificación del permiso de salto
+        return base.MeetsRequirements() && !moveManager.isFlying && rb != null &&
+               permissions != null && permissions.canJump;
     }
 
     public override void UpdateExecution()
@@ -25,16 +29,14 @@ public class JumpActor : MoveActor
 
         bool isGrounded = moveManager.IsGrounded();
 
-        if (isGrounded)
-            verticalVelocity = 0f;
-        else
-            verticalVelocity += PlayerParameters.GRAVITY * Time.deltaTime;
-
-        if (input.JumpPressed && isGrounded)
-            verticalVelocity = jumpForce;
-
-        Vector3 vel = rb.linearVelocity;
-        vel.y = verticalVelocity;
-        rb.linearVelocity = vel;
+        // Solo aplicar impulso de salto si estamos en el suelo y se pulsa el botón
+        if (permissions.canJump && input.JumpPressed && isGrounded)
+        {
+            Vector3 vel = rb.linearVelocity;
+            vel.y = jumpForce;
+            rb.linearVelocity = vel;
+        }
+        // La gravedad la gestiona el Rigidbody (useGravity = true en tierra)
+        // No aplicamos gravedad manual para evitar conflictos
     }
 }

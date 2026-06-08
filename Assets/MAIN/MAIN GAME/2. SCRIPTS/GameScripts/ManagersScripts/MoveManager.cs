@@ -15,15 +15,15 @@ public class MoveManager : ManagerScript
     [HideInInspector] public float max_angular_speed;
 
     [Header("Input & Attributes")]
-    public InputLogic inputLogic;   // renombrado
+    public InputLogic inputLogic;
 
     [Header("Physics")]
     public Rigidbody playerRigidbody;
     public Transform playerTransform;
 
     [Header("Ground Check")]
-    public float groundCheckDistance = 0.2f;
     public LayerMask groundLayers = ~0;
+    public bool showDebug = false;
 
     [Header("State")]
     public bool isFlying = false;
@@ -60,16 +60,22 @@ public class MoveManager : ManagerScript
 
     public override void Update()
     {
-        // Ground check solo si no vuela
-        if (!isFlying && playerRigidbody != null)
+        // ── Ground check robusto con CheckSphere en los pies ──
+        if (playerRigidbody != null)
         {
-            Vector3 rayOrigin = playerRigidbody.position + Vector3.up * 0.1f;
-            _isGrounded = Physics.Raycast(rayOrigin, Vector3.down, groundCheckDistance + 0.1f, groundLayers);
-        }
-        else if (isFlying)
-            _isGrounded = false;
+            // Obtener la base del collider (los pies)
+            Vector3 feetPosition = GetFeetPosition();
+            LayerMask mask = groundLayers & ~(1 << playerRigidbody.gameObject.layer);
+            _isGrounded = Physics.CheckSphere(feetPosition, 0.3f, mask);
 
-        // StopExecution solo una vez por transición de ataque
+            if (showDebug)
+                Debug.Log($"[MoveManager] Grounded: {_isGrounded} (feet: {feetPosition})");
+        }
+        else
+        {
+            _isGrounded = false;
+        }
+
         if (isAttacking != _wasAttacking)
         {
             if (isAttacking)
@@ -88,6 +94,20 @@ public class MoveManager : ManagerScript
             else
                 actor.StopExecution();
         }
+    }
+
+    private Vector3 GetFeetPosition()
+    {
+        Collider col = playerRigidbody.GetComponent<Collider>();
+        if (col != null)
+        {
+            // Punto más bajo del collider (suela) + un pequeño offset hacia arriba para que no traspase
+            return new Vector3(col.bounds.center.x, col.bounds.min.y + 0.1f, col.bounds.center.z);
+        }
+        // Fallback: posición del transform menos 1 metro (estimación)
+        if (playerTransform != null)
+            return playerTransform.position + Vector3.down * 0.9f;
+        return playerRigidbody.position;
     }
 
     public bool IsGrounded() => _isGrounded;
@@ -122,7 +142,7 @@ public class MoveManager : ManagerScript
 
         if (playerRigidbody != null)
         {
-            playerRigidbody.useGravity = false;
+            playerRigidbody.useGravity = !flying;
             playerRigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
     }

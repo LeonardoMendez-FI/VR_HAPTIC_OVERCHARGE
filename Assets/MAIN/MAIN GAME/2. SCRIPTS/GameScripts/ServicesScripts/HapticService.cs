@@ -65,10 +65,7 @@ public class HapticService : ServiceScript
                 portOpened = true;
                 break;
             }
-            catch (SocketException)
-            {
-                // No hacer nada, lo gestionamos después
-            }
+            catch (SocketException) { }
 
             if (!portOpened)
             {
@@ -193,7 +190,7 @@ public class HapticService : ServiceScript
     void ParseAndSnapshot(string msg)
     {
         string[] parts = msg.Split(',');
-        if (parts.Length < 6) return;
+        if (parts.Length < 6) return;   // formato de 6 campos
 
         int.TryParse(parts[0], out int x1); int.TryParse(parts[1], out int y1);
         int.TryParse(parts[2], out int x2); int.TryParse(parts[3], out int y2);

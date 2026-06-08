@@ -4,7 +4,10 @@ using UnityEngine.Events;
 public class InputLogic : MonoBehaviour
 {
     [Header("Haptic Service (opcional)")]
-    public HapticService hapticService;   // renombrado
+    public HapticService hapticService;
+
+    [Header("Permissions")]
+    public PlayerPermissions permissions;
 
     [Header("Detección de doble pulsación")]
     public float doubleTapThreshold = 0.3f;
@@ -35,10 +38,13 @@ public class InputLogic : MonoBehaviour
     [HideInInspector] public bool W, A, S, D;
     [HideInInspector] public bool UpArrow, DownArrow, LeftArrow, RightArrow;
 
+    private bool prevLeftButton = false;
+    private bool prevRightButton = false;
+    private bool prevLeftForTap = false;
+    private bool prevRightForTap = false;
+
     private float lastFlightTapTime = -10f;
     private float lastLandTapTime = -10f;
-    private bool prevLeftButton;
-    private bool prevRightButton;
 
     void Update()
     {
@@ -48,6 +54,9 @@ public class InputLogic : MonoBehaviour
             ReadKeyboardInput();
 
         DetectDoubleTaps();
+
+        prevRightButton = RightButtonHeld;
+        prevLeftButton = LeftButtonHeld;
     }
 
     void ReadHapticInput()
@@ -67,10 +76,7 @@ public class InputLogic : MonoBehaviour
         LeftButtonHeld  = hapticService.LeftButton;
         RightButtonHeld = hapticService.RightButton;
 
-        JumpPressed = hapticService.RightButton && !prevRightButton;
-
-        prevLeftButton  = hapticService.LeftButton;
-        prevRightButton = hapticService.RightButton;
+        JumpPressed = RightButtonHeld && !prevRightButton;
     }
 
     void ReadKeyboardInput()
@@ -95,45 +101,62 @@ public class InputLogic : MonoBehaviour
 
     void DetectDoubleTaps()
     {
-        if (Input.GetKeyDown(ascendKey))
-        {
-            if (Time.time - lastFlightTapTime <= doubleTapThreshold)
-            {
-                OnFlightRequested?.Invoke();
-                lastFlightTapTime = -10f;
-            }
-            else lastFlightTapTime = Time.time;
-        }
-
-        if (Input.GetKeyDown(descendKey))
-        {
-            if (Time.time - lastLandTapTime <= doubleTapThreshold)
-            {
-                OnLandRequested?.Invoke();
-                lastLandTapTime = -10f;
-            }
-            else lastLandTapTime = Time.time;
-        }
-
         if (hapticService != null && hapticService.IsConnected)
         {
-            if (hapticService.RightButton && !prevRightButton)
+            bool rightEdge = RightButtonHeld && !prevRightForTap;
+            bool leftEdge = LeftButtonHeld && !prevLeftForTap;
+
+            if (rightEdge)
             {
                 if (Time.time - lastFlightTapTime <= doubleTapThreshold)
                 {
-                    OnFlightRequested?.Invoke();
+                    if (permissions == null || permissions.canToggleFlight)
+                        OnFlightRequested?.Invoke();
                     lastFlightTapTime = -10f;
                 }
-                else lastFlightTapTime = Time.time;
+                else
+                    lastFlightTapTime = Time.time;
             }
-            if (hapticService.LeftButton && !prevLeftButton)
+
+            if (leftEdge)
             {
                 if (Time.time - lastLandTapTime <= doubleTapThreshold)
                 {
-                    OnLandRequested?.Invoke();
+                    if (permissions == null || permissions.canLand)
+                        OnLandRequested?.Invoke();
                     lastLandTapTime = -10f;
                 }
-                else lastLandTapTime = Time.time;
+                else
+                    lastLandTapTime = Time.time;
+            }
+
+            prevRightForTap = RightButtonHeld;
+            prevLeftForTap = LeftButtonHeld;
+        }
+        else
+        {
+            if (Input.GetKeyDown(ascendKey))
+            {
+                if (Time.time - lastFlightTapTime <= doubleTapThreshold)
+                {
+                    if (permissions == null || permissions.canToggleFlight)
+                        OnFlightRequested?.Invoke();
+                    lastFlightTapTime = -10f;
+                }
+                else
+                    lastFlightTapTime = Time.time;
+            }
+
+            if (Input.GetKeyDown(descendKey))
+            {
+                if (Time.time - lastLandTapTime <= doubleTapThreshold)
+                {
+                    if (permissions == null || permissions.canLand)
+                        OnLandRequested?.Invoke();
+                    lastLandTapTime = -10f;
+                }
+                else
+                    lastLandTapTime = Time.time;
             }
         }
     }

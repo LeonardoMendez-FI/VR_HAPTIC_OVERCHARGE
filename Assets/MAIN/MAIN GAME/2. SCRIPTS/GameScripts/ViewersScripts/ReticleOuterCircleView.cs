@@ -6,11 +6,11 @@ public class ReticleOuterCircleView : ViewBase
     public Image outerCircle;
     public GazeManager gazeManager;
     public GazeEnergyDrainActor drainActor;
-    public float graceDuration = 0.5f;
+
+    [Header("Smooth Settings")]
+    public float smoothSpeed = 10f;
 
     private EnergyManager targetEnergy;
-    private float graceTimer;
-    private bool isApproaching;
     private IGazeTarget currentTarget;
 
     protected override void Subscribe()
@@ -18,8 +18,7 @@ public class ReticleOuterCircleView : ViewBase
         if (gazeManager != null)
         {
             gazeManager.OnGazeTargetChanged += OnTargetChanged;
-            gazeManager.OnGazeTargetFocused += OnTargetFocused;
-            gazeManager.OnGazeTargetLost += HandleTargetLost;
+            gazeManager.OnGazeTargetLost += OnTargetLost;
         }
     }
 
@@ -28,17 +27,13 @@ public class ReticleOuterCircleView : ViewBase
         if (gazeManager != null)
         {
             gazeManager.OnGazeTargetChanged -= OnTargetChanged;
-            gazeManager.OnGazeTargetFocused -= OnTargetFocused;
-            gazeManager.OnGazeTargetLost -= HandleTargetLost;
+            gazeManager.OnGazeTargetLost -= OnTargetLost;
         }
     }
 
-    // FIX: GazeManager no dispara OnGazeTargetChanged(null) al dejar de mirar.
-    // Escuchamos OnGazeTargetLost para soltar el anillo y el EnergyManager del objetivo anterior.
-    private void HandleTargetLost() => OnTargetChanged(null);
-
     private void Start()
     {
+        if (outerCircle != null) outerCircle.fillAmount = 0f;
         OnTargetChanged(gazeManager != null ? gazeManager.CurrentTarget : null);
     }
 
@@ -48,64 +43,48 @@ public class ReticleOuterCircleView : ViewBase
         if (newTarget == null)
         {
             targetEnergy = null;
-            isApproaching = false;
-            if (outerCircle != null) outerCircle.fillAmount = 0f;
             return;
         }
 
-        var go = (newTarget as MonoBehaviour)?.gameObject;
-        var eo = go?.GetComponent<ElectronicObject>();
-        targetEnergy = eo?.energyManager;
-
-        if (drainActor == null || !drainActor.IsDraining)
-        {
-            isApproaching = true;
-            graceTimer = 0f;
-        }
+        var gazeTarget = newTarget as GazeTargetBehaviour;
+        if (gazeTarget != null && gazeTarget.targetElectronicObject != null)
+            targetEnergy = gazeTarget.targetElectronicObject.energyManager;
+        else
+            targetEnergy = null;
     }
 
-    private void OnTargetFocused(IGazeTarget focusedTarget)
+    private void OnTargetLost()
     {
-        isApproaching = false;
+        // Limpiar referencias para ocultar el círculo
+        currentTarget = null;
+        targetEnergy = null;
     }
 
     private void Update()
     {
-        if (outerCircle == null || gazeManager == null || currentTarget == null || targetEnergy == null)
-        {
-            if (outerCircle != null && !Mathf.Approximately(outerCircle.fillAmount, 0f))
-                outerCircle.fillAmount = 0f;
-            return;
-        }
+        if (outerCircle == null) return;
 
         float targetFill = 0f;
 
-        if (drainActor != null && drainActor.IsDraining)
+        if (currentTarget == null || targetEnergy == null)
         {
-            isApproaching = false;
-            targetFill = drainActor.currentEnergyNorm;
+            targetFill = 0f;
         }
-        else if (isApproaching)
+        else if (gazeManager.IsLocked)
         {
-            float energyNorm = targetEnergy.normalized_local;
-            graceTimer += Time.deltaTime;
-            if (graceTimer >= graceDuration)
-            {
-                targetFill = energyNorm;
-                isApproaching = false;
-            }
+            if (drainActor != null)
+                targetFill = drainActor.currentEnergyNorm;
             else
-            {
-                float t = graceTimer / graceDuration;
-                targetFill = Mathf.Lerp(0f, energyNorm, t);
-            }
+                targetFill = targetEnergy.normalized_local;
         }
         else
         {
-            targetFill = targetEnergy.normalized_local;
+            targetFill = targetEnergy.normalized_local * gazeManager.FocusProgress;
         }
 
-        if (Mathf.Approximately(outerCircle.fillAmount, targetFill)) return;
-        outerCircle.fillAmount = Mathf.Lerp(outerCircle.fillAmount, targetFill, Time.deltaTime * 10f);
+        outerCircle.fillAmount = Mathf.Lerp(outerCircle.fillAmount, targetFill, Time.deltaTime * smoothSpeed);
+
+        if (targetFill == 0f && outerCircle.fillAmount < 0.01f)
+            outerCircle.fillAmount = 0f;
     }
 }

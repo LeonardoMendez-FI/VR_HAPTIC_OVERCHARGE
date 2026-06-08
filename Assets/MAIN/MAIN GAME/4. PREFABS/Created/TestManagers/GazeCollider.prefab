@@ -1,0 +1,133 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5026351094602204000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8970842549754201536}
+  - component: {fileID: 3926867978201808434}
+  - component: {fileID: 7082198560726990493}
+  - component: {fileID: 3321396924971753913}
+  m_Layer: 6
+  m_Name: GazeCollider
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8970842549754201536
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5026351094602204000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.55, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!136 &3926867978201808434
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5026351094602204000}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 4.229718
+  m_Height: 11.349399
+  m_Direction: 1
+  m_Center: {x: -0.20886421, y: 6.3805203, z: -0.32434082}
+--- !u!114 &7082198560726990493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5026351094602204000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 467268621784b9e4fb01829f1fab2f1f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  outline:
+    outlineRenderers: []
+    intensityProperty: _OutlineIntensity
+    colorProperty: _OutlineColor
+    detectedColor: {r: 0, g: 0.9, b: 1, a: 0.55}
+    lockedColor: {r: 1, g: 0.35, b: 0, a: 1}
+    colorLerpSpeed: 10
+    fadeInSpeed: 12
+  progressRing:
+    progressRenderers: []
+    progressProperty: _ScanProgress
+    progressColorProperty: _ProgressColor
+    scanningColor: {r: 0, g: 1, b: 0.45, a: 1}
+    lockedColor: {r: 1, g: 0.15, b: 0, a: 1}
+  lockFeedback:
+    lockVFXObjects: []
+    lockParticles: []
+    pulseCount: 3
+    pulseSpeed: 7
+    pulseAmplitude: 0.4
+  fadeOut:
+    duration: 0.5
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  targetType: 0
+--- !u!114 &3321396924971753913
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5026351094602204000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3cf2318911fc8b4096b0101422e6610, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gazeLayerMask:
+    serializedVersion: 2
+    m_Bits: 64

@@ -1,16 +1,11 @@
 using UnityEngine;
 
-/// <summary>
-/// Controla la pausa global del juego. Cuando se activa, detiene todos los managers
-/// y el input, evitando que el juego siga procesando durante pantallas finales o pausas.
-/// Se activa desde EndGameUI u otros sistemas que necesiten congelar la partida.
-/// </summary>
 public class GamePauseController : MonoBehaviour
 {
     public static GamePauseController Instance { get; private set; }
 
     [Header("Systems to Pause")]
-    public ManagerScript[] managersToPause;   // llenar en inspector con MoveManager, EnergyManager, etc.
+    public ManagerScript[] managersToPause;
     public InputLogic inputLogic;
     public GazeManager gazeManager;
 
@@ -18,13 +13,18 @@ public class GamePauseController : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null)
+        // Si hay otra instancia, destruimos esta (ya no intentamos persistir)
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+
+        // Si se desea que persista entre escenas, asegúrate de que esté en un GameObject raíz
+        // y descomenta la línea siguiente:
+        // DontDestroyOnLoad(gameObject);
+        // En este proyecto, cada escena tiene su propio jugador, así que NO persistimos.
     }
 
     public void PauseGame()
@@ -32,17 +32,11 @@ public class GamePauseController : MonoBehaviour
         if (isPaused) return;
         isPaused = true;
 
-        // Desactivar managers
         foreach (var m in managersToPause)
             if (m != null) m.enabled = false;
 
-        // Desactivar input
         if (inputLogic != null) inputLogic.enabled = false;
-
-        // Desactivar gaze (para que no siga enfocando)
         if (gazeManager != null) gazeManager.enabled = false;
-
-        Debug.Log("[GamePause] Juego pausado.");
     }
 
     public void ResumeGame()
@@ -50,13 +44,10 @@ public class GamePauseController : MonoBehaviour
         if (!isPaused) return;
         isPaused = false;
 
-        // Reactivar managers
         foreach (var m in managersToPause)
             if (m != null) m.enabled = true;
 
         if (inputLogic != null) inputLogic.enabled = true;
         if (gazeManager != null) gazeManager.enabled = true;
-
-        Debug.Log("[GamePause] Juego reanudado.");
     }
 }
