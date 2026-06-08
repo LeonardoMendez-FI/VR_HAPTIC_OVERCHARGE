@@ -18,6 +18,9 @@ public class LevelService : ServiceScript
     public IntEvent OnMachinesRemainingChanged;
     public StringEvent OnLevelTitleChanged;
 
+    [Header("Next Level")]
+    public bool autoLoadNextLevel = false;   // ← para la puerta
+
     private int remainingMachines;
 
     void Start()
@@ -59,14 +62,14 @@ public class LevelService : ServiceScript
 
         if (remainingMachines <= 0)
         {
-            if (levelNumber >= 6)
+            if (autoLoadNextLevel && levelNumber < 6)
+            {
+                SceneManager.LoadScene($"3-LEVEL{levelNumber + 1}");
+            }
+            else if (autoLoadNextLevel && levelNumber >= 6)
             {
                 StatsCollector collector = FindFirstObjectByType<StatsCollector>();
                 collector?.EndGame(true);
-            }
-            else
-            {
-                SceneManager.LoadScene($"3-LEVEL{levelNumber + 1}");
             }
         }
     }
