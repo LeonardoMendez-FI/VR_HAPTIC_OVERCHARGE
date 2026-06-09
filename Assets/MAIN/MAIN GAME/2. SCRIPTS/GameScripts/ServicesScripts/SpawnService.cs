@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class SpawnService : ServiceScript
 {
@@ -7,22 +8,45 @@ public class SpawnService : ServiceScript
     public List<GameObject> enemyPrefabs = new List<GameObject>();
 
     [Header("Spawn Settings")]
-    public float spawnInterval = 5f;
-    public int maxSpawnedEnemies = 3;
+    public Transform spawnPoint;
+    public float     spawnInterval      = 5f;
+    public int       maxSpawnedEnemies  = 3;
 
     [Header("Probabilities (normalized)")]
     [Range(0f, 1f)] public float[] probabilities = new float[5];
 
-    private float timer;
-    private List<GameObject> activeSpawned = new List<GameObject>();
+    private float              timer;
+    private List<GameObject>   activeSpawned = new List<GameObject>();
 
-    void Start()
+    private Transform      _playerTarget;
+    private GazeManager    _playerGaze;
+    private EnergyManager  _playerEnergy;
+    private bool           _referencesReady = false;
+
+    // Tracks per-enemy destroy callbacks so they can be explicitly removed,
+    // preventing the listener leak caused by anonymous lambdas (which cannot
+    // be unregistered from UnityEvent).
+    private Dictionary<GameObject, UnityAction> _destroyCallbacks
+        = new Dictionary<GameObject, UnityAction>();
+
+    private void Start()
     {
         NormalizeProbabilities();
+        if (spawnPoint == null)
+            spawnPoint = transform;
     }
 
-    void Update()
+    public void SetPlayerReferences(Transform playerTarget, GazeManager playerGaze, EnergyManager playerEnergy)
     {
+        _playerTarget    = playerTarget;
+        _playerGaze      = playerGaze;
+        _playerEnergy    = playerEnergy;
+        _referencesReady = (playerTarget != null && playerGaze != null && playerEnergy != null);
+    }
+
+    private void Update()
+    {
+        if (!_referencesReady) return;
         if (activeSpawned.Count >= maxSpawnedEnemies) return;
 
         timer += Time.deltaTime;
@@ -33,33 +57,65 @@ public class SpawnService : ServiceScript
         }
     }
 
-    void SpawnEnemy()
+    private void SpawnEnemy()
     {
         if (enemyPrefabs.Count == 0) return;
 
         int index = PickRandomIndex();
         if (index < 0 || index >= enemyPrefabs.Count) return;
 
-        Vector3 spawnPos = transform.position;
-        GameObject instance = Instantiate(enemyPrefabs[index], spawnPos, Quaternion.identity);
+        GameObject instance = Instantiate(enemyPrefabs[index], spawnPoint.position, Quaternion.identity);
+
+        var refs = instance.GetComponentInChildren<EnemyReferences>();
+        if (refs != null)
+            refs.SetReferences(_playerTarget, _playerGaze, _playerEnergy);
 
         var structMgr = instance.GetComponentInChildren<StructManager>();
         if (structMgr != null)
-            structMgr.OnEntityDestroyed.AddListener(() => OnEnemyDestroyed(instance));
+        {
+            // Store the callback as a named UnityAction so it can be removed later.
+            // Anonymous lambdas cannot be removed from UnityEvent — they create a
+            // permanent subscription that leaks the closure even after the enemy
+            // GameObject is destroyed.
+            UnityAction callback = null;
+            callback = () => OnEnemyDestroyed(instance, structMgr, callback);
+            _destroyCallbacks[instance] = callback;
+            structMgr.OnEntityDestroyed.AddListener(callback);
+        }
 
         activeSpawned.Add(instance);
     }
 
-    void OnEnemyDestroyed(GameObject enemy)
+    private void OnEnemyDestroyed(GameObject enemy, StructManager structMgr, UnityAction callback)
     {
+        // Remove the listener immediately so the UnityEvent holds no further
+        // reference to this callback or the captured variables.
+        if (structMgr != null)
+            structMgr.OnEntityDestroyed.RemoveListener(callback);
+
+        _destroyCallbacks.Remove(enemy);
         activeSpawned.Remove(enemy);
     }
 
-    int PickRandomIndex()
+    private void OnDestroy()
     {
-        float roll = Random.value;
+        // Clean up any callbacks for enemies still alive when this service is torn down.
+        foreach (var kvp in _destroyCallbacks)
+        {
+            if (kvp.Key == null) continue;
+            var structMgr = kvp.Key.GetComponentInChildren<StructManager>();
+            if (structMgr != null)
+                structMgr.OnEntityDestroyed.RemoveListener(kvp.Value);
+        }
+        _destroyCallbacks.Clear();
+    }
+
+    private int PickRandomIndex()
+    {
+        float roll       = Random.value;
         float cumulative = 0f;
-        int lastIndex = probabilities.Length - 1;
+        int   lastIndex  = probabilities.Length - 1;
+
         for (int i = 0; i < lastIndex; i++)
         {
             cumulative += probabilities[i];
@@ -68,7 +124,7 @@ public class SpawnService : ServiceScript
         return lastIndex;
     }
 
-    void NormalizeProbabilities()
+    private void NormalizeProbabilities()
     {
         float sum = 0f;
         foreach (float p in probabilities) sum += p;

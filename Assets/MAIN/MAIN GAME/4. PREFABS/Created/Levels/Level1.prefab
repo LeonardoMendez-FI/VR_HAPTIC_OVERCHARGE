@@ -348,6 +348,7 @@ MonoBehaviour:
   OnLevelTitleChanged:
     m_PersistentCalls:
       m_Calls: []
+  autoLoadNextLevel: 0
 --- !u!1 &1589109250415523716
 GameObject:
   m_ObjectHideFlags: 0
@@ -5337,6 +5338,18 @@ PrefabInstance:
       propertyPath: m_Center.y
       value: -1.7
       objectReference: {fileID: 0}
+    - target: {fileID: 4901140830348785917, guid: 78f705be9a49d6e4e8cb83680a4e3bbd, type: 3}
+      propertyPath: m_IncludeLayers.m_Bits
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4948483590879958019, guid: 78f705be9a49d6e4e8cb83680a4e3bbd, type: 3}
+      propertyPath: m_VoxelSize
+      value: 1.6666666
+      objectReference: {fileID: 0}
+    - target: {fileID: 4948483590879958019, guid: 78f705be9a49d6e4e8cb83680a4e3bbd, type: 3}
+      propertyPath: m_NavMeshData
+      value: 
+      objectReference: {fileID: 23800000, guid: 2dac3364afa597e4a91c2bf29f38661f, type: 2}
     m_RemovedComponents:
     - {fileID: 1069431459416158444, guid: 78f705be9a49d6e4e8cb83680a4e3bbd, type: 3}
     m_RemovedGameObjects: []

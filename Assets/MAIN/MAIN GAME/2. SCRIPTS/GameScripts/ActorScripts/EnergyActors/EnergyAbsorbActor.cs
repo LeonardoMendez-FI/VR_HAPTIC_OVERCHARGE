@@ -3,36 +3,40 @@ using UnityEngine;
 public class EnergyAbsorbActor : EnergyActor
 {
     [Header("Drain Reference")]
-    public GazeEnergyDrainActor drainActor;   // arrastra desde el Inspector
+    public GazeEnergyDrainActor drainActor;
 
     public override bool MeetsRequirements()
     {
         if (!base.MeetsRequirements()) return false;
         if (drainActor == null) return false;
-        return drainActor.IsDraining;   // solo activo mientras drenamos a un enemigo
+        return drainActor.IsDraining;
     }
 
     public override void StartExecution()
     {
         base.StartExecution();
-        // Suscribirse al evento que dispara el drenaje cada frame
         drainActor.onEnergyAbsorbed.AddListener(OnEnergyAbsorbed);
     }
 
     private void OnEnergyAbsorbed(float amount)
     {
-        // Sumar la energía absorbida a nuestra propia energía
         managerScript.modify_energy(amount);
     }
 
     public override void UpdateExecution()
     {
-        // No necesita hacer nada cada frame, el evento se encarga de la recarga
+        // Energy transfer is driven entirely by the onEnergyAbsorbed event fired
+        // each frame by GazeEnergyDrainActor — no per-frame work needed here.
     }
 
     public override void StopExecution()
     {
         base.StopExecution();
-        drainActor.onEnergyAbsorbed.RemoveListener(OnEnergyAbsorbed);
+
+        // drainActor could be null if this actor is stopped during scene teardown
+        // or if the Inspector reference was never assigned. Guard defensively so
+        // StopExecution (called by ManagerScript on any actor exit) never throws.
+        if (drainActor != null)
+            drainActor.onEnergyAbsorbed.RemoveListener(OnEnergyAbsorbed);
     }
 }

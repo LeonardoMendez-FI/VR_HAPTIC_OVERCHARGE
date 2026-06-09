@@ -21,7 +21,12 @@ public class ManagerScript : MonoBehaviour
         if (current_actor != null && current_actor.Solve())
             return;
 
-        current_actor = null;
+        // Detener el actor saliente antes de cambiar
+        if (current_actor != null)
+        {
+            current_actor.StopExecution();
+            current_actor = null;
+        }
 
         foreach (ActorBase actor in _actors)
         {

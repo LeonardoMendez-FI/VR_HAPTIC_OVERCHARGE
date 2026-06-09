@@ -45,15 +45,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefabs:
-  - {fileID: 1238097899957163179, guid: 7e635f75d303e3542b40d6fa6c8a0d20, type: 3}
+  - {fileID: 1178147768575032982, guid: 7d1eac34ae6fc0440a372973e2e303f5, type: 3}
+  - {fileID: 5259416724939329361, guid: 3519e87fdc4b3d64f95a95110a92983a, type: 3}
+  - {fileID: 718128687949249508, guid: 7e635f75d303e3542b40d6fa6c8a0d20, type: 3}
+  - {fileID: 478430550425256265, guid: 44fa0c6bd92badc47b5c3e02e667f926, type: 3}
+  - {fileID: 8525379373233039111, guid: 010f7c19ab0a72f409383ceb1bd4a122, type: 3}
+  spawnPoint: {fileID: 7791598131993593390}
   spawnInterval: 5
   maxSpawnedEnemies: 2
   probabilities:
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
+  - 0.08
+  - 0.46
+  - 0.64
+  - 0.23
+  - 0.78
 --- !u!1 &6750653382892046114
 GameObject:
   m_ObjectHideFlags: 0
@@ -88,6 +93,7 @@ Transform:
   m_Children:
   - {fileID: 8426458184365407724}
   - {fileID: 8738276058094903495}
+  - {fileID: 7791598131993593390}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &7010741525603586621
@@ -174,6 +180,37 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -1870044648908203235, guid: 462b3ea987d829c4ea7ae7b77d32ddc8, type: 3}
+--- !u!1 &7531268299404118264
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7791598131993593390}
+  m_Layer: 0
+  m_Name: SpawnPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7791598131993593390
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7531268299404118264}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3.59, y: -2.77, z: -3.53}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6261397459375857048}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &616464104336881708
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -298,6 +335,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6261397459375857048}
     m_Modifications:
+    - target: {fileID: 1838484758342879778, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
+      propertyPath: electronicObject
+      value: 
+      objectReference: {fileID: 6282712081826077005}
     - target: {fileID: 4682817934444267033, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
       propertyPath: m_Name
       value: ElecObjManagers
@@ -305,7 +346,7 @@ PrefabInstance:
     - target: {fileID: 6017688873542170626, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
       propertyPath: electronicObject
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 6282712081826077005}
     - target: {fileID: 6796819688881671065, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
       propertyPath: m_LocalPosition.x
       value: 189.4361

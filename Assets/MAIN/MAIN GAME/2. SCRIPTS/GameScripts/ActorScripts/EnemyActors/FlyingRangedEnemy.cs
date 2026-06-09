@@ -3,23 +3,64 @@ using UnityEngine;
 public class FlyingRangedEnemy : EnemyActor
 {
     [Header("Flight Settings")]
-    public float flyHeight = 5f;           // altura a la que intenta mantenerse
-    public float speed = 5f;
-    public float rotationSpeed = 3f;
-    public float attackRange = 15f;        // distancia a la que empieza a disparar
-    public float preferredDistance = 10f;  // distancia que trata de mantener
+    public float flyHeight        = 5f;
+    public float speed            = PlayerParameters.MEDIUM_LINEAR_SPEED * 0.5f;
+    public float rotationSpeed    = 3f;
+    public float attackRange      = 15f;
+    public float preferredDistance = 10f;
 
-    [Header("Attack")]
-    public float damage = 10f;
-    public float fireRate = 1f;
+    [Header("Detection")]
+    public float detectionRange = PlayerParameters.ENEMY_DETECTION_RANGE;
+    public float loseRange      = PlayerParameters.ENEMY_LOSE_RANGE;
+
+    [Header("Ranged Attack")]
+    public float      damage           = 8f;
+    public float      fireRate         = 1f;
     public GameObject projectilePrefab;
-    public Transform firePoint;            // desde donde salen los proyectiles
+    public Transform  firePoint;
 
-    private float fireCooldown = 0f;
+    [Header("Emergency Close Attack")]
+    public float emergencyRange      = 3f;
+    public float emergencyDamage     = 15f;
+    public float emergencyAttackRate = 2f;
+
+    private float fireCooldown      = 0f;
+    private float emergencyCooldown = 0f;
+    private bool  hasDetectedPlayer = false;
+
+    // Must be a protected override so EnemyActor.Start() runs and populates
+    // playerTarget from the injected EnemyReferences. The original void Start()
+    // (non-override) shadowed the base method, leaving playerTarget null and
+    // falling back on an expensive FindFirstObjectByType scene search.
+    protected override void Start()
+    {
+        base.Start(); // sets playerTarget from EnemyReferences
+    }
 
     public override bool MeetsRequirements()
     {
-        return playerTarget != null;       // siempre activo mientras haya jugador
+        if (playerTarget == null) return false;
+
+        float dist = Vector3.Distance(transform.position, playerTarget.position);
+
+        // Mirror the hysteresis pattern used by EnemyChaseActor.
+        if (!hasDetectedPlayer)
+        {
+            if (dist <= detectionRange)
+            {
+                hasDetectedPlayer = true;
+                return true;
+            }
+            return false;
+        }
+
+        if (dist > loseRange)
+        {
+            hasDetectedPlayer = false;
+            return false;
+        }
+
+        return true;
     }
 
     public override void UpdateExecution()
@@ -27,40 +68,40 @@ public class FlyingRangedEnemy : EnemyActor
         if (playerTarget == null) return;
 
         Vector3 targetPos = playerTarget.position;
-        Vector3 myPos = transform.position;
+        Vector3 myPos     = transform.position;
 
-        // Calcular dirección horizontal hacia el jugador
         Vector3 toPlayer = targetPos - myPos;
         toPlayer.y = 0f;
         float dist = toPlayer.magnitude;
 
-        // Rotar hacia el jugador
+        // Rotate to face the player on the horizontal plane.
         if (toPlayer != Vector3.zero)
         {
             Quaternion targetRot = Quaternion.LookRotation(toPlayer);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
         }
 
-        // Movimiento hacia la distancia preferida
+        // Emergency melee takes priority over all ranged behaviour.
+        if (dist <= emergencyRange)
+        {
+            EmergencyAttack();
+            return;
+        }
+
+        // Orbit at preferred distance.
         Vector3 moveDir = Vector3.zero;
         if (dist > preferredDistance + 1f)
-        {
             moveDir = toPlayer.normalized;
-        }
         else if (dist < preferredDistance - 1f)
-        {
             moveDir = -toPlayer.normalized;
-        }
-        // Movimiento lateral opcional: podría esquivar, pero por simplicidad se queda quieto
 
-        // Movimiento vertical para mantener la altura
-        float heightError = flyHeight - myPos.y;
+        // Altitude correction — moves toward flyHeight above Y=0.
+        float heightError  = flyHeight - myPos.y;
         Vector3 verticalMove = Vector3.up * heightError * 0.5f;
 
-        Vector3 velocity = (moveDir * speed) + verticalMove;
-        transform.position += velocity * Time.deltaTime;
+        transform.position += (moveDir * speed + verticalMove) * Time.deltaTime;
 
-        // Ataque a distancia
+        // Ranged attack.
         fireCooldown -= Time.deltaTime;
         if (dist <= attackRange && fireCooldown <= 0f)
         {
@@ -69,21 +110,40 @@ public class FlyingRangedEnemy : EnemyActor
         }
     }
 
-    void FireProjectile()
+    private void EmergencyAttack()
+    {
+        emergencyCooldown -= Time.deltaTime;
+        if (emergencyCooldown <= 0f)
+        {
+            if (playerTarget != null)
+            {
+                StructManager playerStruct = playerTarget.GetComponentInParent<StructManager>();
+                if (playerStruct != null)
+                    playerStruct.TakeDamage(emergencyDamage, transform.position);
+            }
+            emergencyCooldown = 1f / emergencyAttackRate;
+        }
+    }
+
+    private void FireProjectile()
     {
         if (projectilePrefab == null || firePoint == null) return;
 
         GameObject proj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-        Projectile p = proj.GetComponent<Projectile>();
+        Projectile p    = proj.GetComponent<Projectile>();
         if (p != null)
         {
-            p.damage = damage;
-            p.target = playerTarget;   // el proyectil perseguirá al jugador (opcional)
+            p.damage   = damage;
+            p.target   = playerTarget;
+            p.speed    = PlayerParameters.PROJECTILE_SPEED;
+            p.lifetime = PlayerParameters.PROJECTILE_LIFETIME;
         }
     }
 
     public override void StopExecution()
     {
         base.StopExecution();
+        fireCooldown      = 0f;
+        emergencyCooldown = 0f;
     }
 }
