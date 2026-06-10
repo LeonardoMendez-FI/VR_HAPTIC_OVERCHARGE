@@ -196,7 +196,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   managerScript: {fileID: 5220023222284394945}
   linearSpeedMultiplier: 1
-  angularSpeedMultiplier: 1
+  angularSpeedMultiplier: 0.75
   permissions: {fileID: 0}
   showDebug: 0
 --- !u!1 &3153603396798363051
@@ -797,10 +797,10 @@ MonoBehaviour:
   inputLogic: {fileID: 0}
   playerRigidbody: {fileID: 0}
   playerTransform: {fileID: 0}
-  groundCheckDistance: 0.2
   groundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  showDebug: 0
   isFlying: 0
   isAttacking: 0
 --- !u!1 &9190026258242061913

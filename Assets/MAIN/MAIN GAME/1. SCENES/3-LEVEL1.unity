@@ -191,6 +191,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8112447272906186295, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}
+      propertyPath: focusThreshold
+      value: 0.5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 4410365541207926390, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}
@@ -361,6 +365,10 @@ PrefabInstance:
     - target: {fileID: 4219250323579473239, guid: 20c46074130bb374f88a6a8548a5d1ab, type: 3}
       propertyPath: m_NavMeshData
       value: 
+      objectReference: {fileID: 23800000, guid: 60c51d97490d81e4da2413addc6080dd, type: 2}
+    - target: {fileID: 5444208674667760173, guid: 20c46074130bb374f88a6a8548a5d1ab, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 6763559625147298035, guid: 20c46074130bb374f88a6a8548a5d1ab, type: 3}
       propertyPath: m_Convex

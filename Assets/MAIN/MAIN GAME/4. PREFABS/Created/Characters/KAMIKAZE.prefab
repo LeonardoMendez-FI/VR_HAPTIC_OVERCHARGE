@@ -48,6 +48,8 @@ MonoBehaviour:
   playerTarget: {fileID: 0}
   flyHeight: 5
   preferredDistance: 0
+  detectionTimeMultiplier: 1
+  loseTimeMultiplier: 1
   linearSpeedMultiplier: 0.5
   angularSpeedMultiplier: 1
   speed: 10
@@ -99,7 +101,7 @@ MonoBehaviour:
   managerScript: {fileID: 8186921414349038414}
   playerTarget: {fileID: 0}
   playerEnergyManager: {fileID: 0}
-  detonationRange: 2
+  detonationTimeMultiplier: 1
   detonationDelay: 1.5
   damageMultiplier: 1
   explosionPrefab: {fileID: 129401910579723915}
@@ -252,12 +254,16 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 870831864287913325, guid: 28d3424927eee814c8dfee6373fe737c, type: 3}
       propertyPath: _actors.Array.size
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 870831864287913325, guid: 28d3424927eee814c8dfee6373fe737c, type: 3}
       propertyPath: '_actors.Array.data[0]'
       value: 
       objectReference: {fileID: 9143807211274609481}
+    - target: {fileID: 870831864287913325, guid: 28d3424927eee814c8dfee6373fe737c, type: 3}
+      propertyPath: '_actors.Array.data[1]'
+      value: 
+      objectReference: {fileID: 860231166636561480}
     - target: {fileID: 7558767192664953313, guid: 28d3424927eee814c8dfee6373fe737c, type: 3}
       propertyPath: playerEnergyManager
       value: 

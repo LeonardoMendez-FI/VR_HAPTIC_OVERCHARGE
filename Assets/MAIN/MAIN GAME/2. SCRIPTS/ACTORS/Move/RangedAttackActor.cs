@@ -16,43 +16,24 @@ public class RangedAttackActor : ActorScript<EnemyManager>
     [Header("Fire Rate")]
     public float fireRate = 0.5f;
 
-    [HideInInspector] public float damage;
-    [HideInInspector] public float attackRange;
+    public float damage      => PlayerParameters.ENEMY_BASE_RANGED_DAMAGE * damageMultiplier;
+    public float attackRange => PlayerParameters.MEDIUM_LINEAR_SPEED
+                              * PlayerParameters.ENEMY_RANGED_TIME
+                              * timeMultiplier;
 
     private float fireCooldown = 0f;
+    private EnemyEnergyScaledStatsComponent _scaler;
 
-    private void Awake()
+    private void Start()
     {
-        damage      = PlayerParameters.ENEMY_BASE_RANGED_DAMAGE * damageMultiplier;
-        attackRange = PlayerParameters.MEDIUM_LINEAR_SPEED
-                    * PlayerParameters.ENEMY_RANGED_TIME
-                    * timeMultiplier;
+        _scaler = GetComponentInParent<EnemyEnergyScaledStatsComponent>();
     }
 
     public override bool MeetsRequirements()
     {
-        if (managerScript == null)
-        {
-            Debug.LogWarning("[RangedAttack] managerScript es null");
-            return false;
-        }
-        if (playerTarget == null)
-        {
-            Debug.LogWarning("[RangedAttack] playerTarget es null");
-            return false;
-        }
-        if (projectilePrefab == null || firePoint == null)
-        {
-            Debug.LogWarning("[RangedAttack] projectilePrefab o firePoint es null");
-            return false;
-        }
-        float dist = Vector3.Distance(firePoint.position, playerTarget.position);
-        bool inRange = dist <= attackRange;
-        if (!inRange)
-        {
-            Debug.Log($"[RangedAttack] Fuera de rango: dist={dist:F1} rango={attackRange:F1}");
-        }
-        return inRange;
+        if (playerTarget == null) return false;
+        if (projectilePrefab == null || firePoint == null) return false;
+        return Vector3.Distance(firePoint.position, playerTarget.position) <= attackRange;
     }
 
     public override void UpdateExecution()
@@ -62,17 +43,19 @@ public class RangedAttackActor : ActorScript<EnemyManager>
         {
             FireProjectile();
             fireCooldown = 1f / fireRate;
-            Debug.Log("[RangedAttack] Proyectil disparado");
         }
     }
 
     private void FireProjectile()
     {
+        float scaledDamage = damage;
+        if (_scaler != null) scaledDamage *= _scaler.CurrentDamageScale;
+
         GameObject proj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         Projectile p    = proj.GetComponent<Projectile>();
         if (p != null)
         {
-            p.damage   = damage;
+            p.damage   = scaledDamage;
             p.target   = playerTarget;
             p.speed    = PlayerParameters.PROJECTILE_SPEED;
             p.lifetime = PlayerParameters.PROJECTILE_LIFETIME;

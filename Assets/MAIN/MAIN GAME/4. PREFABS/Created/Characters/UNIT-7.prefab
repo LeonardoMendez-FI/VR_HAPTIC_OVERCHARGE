@@ -1918,6 +1918,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 4315138048300587970}
     - target: {fileID: 5220023222284394945, guid: c853383d13070644a9f768f0f7273fb9, type: 3}
+      propertyPath: showDebug
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5220023222284394945, guid: c853383d13070644a9f768f0f7273fb9, type: 3}
       propertyPath: inputLogic
       value: 
       objectReference: {fileID: 5819279417279365380}
@@ -1933,6 +1937,10 @@ PrefabInstance:
       propertyPath: groundCheckOrigin
       value: 
       objectReference: {fileID: 4308613068013046261}
+    - target: {fileID: 5220023222284394945, guid: c853383d13070644a9f768f0f7273fb9, type: 3}
+      propertyPath: groundLayers.m_Bits
+      value: 256
+      objectReference: {fileID: 0}
     - target: {fileID: 5723622779787184629, guid: c853383d13070644a9f768f0f7273fb9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 189.4361

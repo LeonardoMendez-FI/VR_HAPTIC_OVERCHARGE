@@ -311,6 +311,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 53773851}
   m_CullTransparentMesh: 1
+--- !u!54 &556349372 stripped
+Rigidbody:
+  m_CorrespondingSourceObject: {fileID: 5665317261653050597, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}
+  m_PrefabInstance: {fileID: 1962093572}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &695338249
 GameObject:
   m_ObjectHideFlags: 0
@@ -738,7 +743,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1021167023}
-  - component: {fileID: 1021167021}
+  - component: {fileID: 1021167024}
   m_Layer: 0
   m_Name: SceneSetup
   m_TagString: Untagged
@@ -746,22 +751,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1021167021
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1021167019}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 030ddc419da3d3b4b8712731eaff96bf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  moveManager: {fileID: 1542093671}
-  gazeManager: {fileID: 764339492}
-  playerHUD: {fileID: 1356587733}
-  playerPermissions: {fileID: 1962093573}
 --- !u!4 &1021167023
 Transform:
   m_ObjectHideFlags: 0
@@ -777,6 +766,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1021167024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1021167019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cf7a5b149f8c745b0a4719548ed31e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveManager: {fileID: 1542093671}
+  gazeManager: {fileID: 764339492}
+  playerHUD: {fileID: 1356587733}
+  playerPermissions: {fileID: 1962093573}
+  playerRigidbody: {fileID: 556349372}
 --- !u!1001 &1041704071
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1419,6 +1425,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4315138048300587970, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}
       propertyPath: flightEnergyDrainEnabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5665317261653050597, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}
+      propertyPath: m_UseGravity
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8008798238818244310, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}

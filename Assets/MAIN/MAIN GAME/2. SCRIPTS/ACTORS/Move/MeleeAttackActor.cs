@@ -15,39 +15,24 @@ public class MeleeAttackActor : ActorScript<EnemyManager>
     [Header("Attack Rate")]
     public float attackRate = 1f;
 
-    [HideInInspector] public float damage;
-    [HideInInspector] public float attackRange;
+    public float damage      => PlayerParameters.ENEMY_BASE_MELEE_DAMAGE * damageMultiplier;
+    public float attackRange => PlayerParameters.MEDIUM_LINEAR_SPEED
+                              * PlayerParameters.ENEMY_MELEE_TIME
+                              * timeMultiplier;
 
     private float attackCooldown = 0f;
+    private EnemyEnergyScaledStatsComponent _scaler;
 
-    private void Awake()
+    private void Start()
     {
-        damage      = PlayerParameters.ENEMY_BASE_MELEE_DAMAGE * damageMultiplier;
-        attackRange = PlayerParameters.MEDIUM_LINEAR_SPEED
-                    * PlayerParameters.ENEMY_MELEE_TIME
-                    * timeMultiplier;
+        _scaler = GetComponentInParent<EnemyEnergyScaledStatsComponent>();
     }
 
     public override bool MeetsRequirements()
     {
-        if (managerScript == null)
-        {
-            Debug.LogWarning("[MeleeAttack] managerScript es null");
-            return false;
-        }
-        if (playerTarget == null)
-        {
-            Debug.LogWarning("[MeleeAttack] playerTarget es null");
-            return false;
-        }
+        if (playerTarget == null) return false;
         Transform origin = attackPoint != null ? attackPoint : transform;
-        float dist = Vector3.Distance(origin.position, playerTarget.position);
-        bool inRange = dist <= attackRange;
-        if (!inRange)
-        {
-            Debug.Log($"[MeleeAttack] Fuera de rango: dist={dist:F1} rango={attackRange:F1}");
-        }
-        return inRange;
+        return Vector3.Distance(origin.position, playerTarget.position) <= attackRange;
     }
 
     public override void UpdateExecution()
@@ -62,9 +47,11 @@ public class MeleeAttackActor : ActorScript<EnemyManager>
 
     private void AttackPlayer()
     {
+        float scaledDamage = damage;
+        if (_scaler != null) scaledDamage *= _scaler.CurrentDamageScale;
+
         StructManager playerStruct = playerTarget.GetComponentInParent<StructManager>();
-        playerStruct?.TakeDamage(damage, transform.position);
-        Debug.Log($"[MeleeAttack] Daño aplicado: {damage}");
+        playerStruct?.TakeDamage(scaledDamage, transform.position);
     }
 
     public override void StopExecution()

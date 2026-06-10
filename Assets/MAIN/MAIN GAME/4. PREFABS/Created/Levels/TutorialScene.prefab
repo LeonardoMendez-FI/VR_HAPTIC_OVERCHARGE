@@ -40,6 +40,10 @@ PrefabInstance:
       propertyPath: m_Center.y
       value: -0.20395909
       objectReference: {fileID: 0}
+    - target: {fileID: 5444208674667760173, guid: 20c46074130bb374f88a6a8548a5d1ab, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 8530860198839430845, guid: 20c46074130bb374f88a6a8548a5d1ab, type: 3}
       propertyPath: m_LocalScale.x
       value: 10

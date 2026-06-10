@@ -10,22 +10,18 @@ public class EnemyEnergyScaledStatsComponent : MonoBehaviour
     public EnemyPatrolActor    patrolActor;
     public FlyingPursuitActor  flyingPursuitActor;
 
-    [Header("Attack Actors (assign in Inspector)")]
-    public MeleeAttackActor         meleeAttackActor;
-    public RangedAttackActor        rangedAttackActor;
-    public FlyingRangedAttackActor  flyingRangedAttackActor;   // ← cambiado
-
     [Header("Scaling Curve")]
     public AnimationCurve scalingCurve = AnimationCurve.Linear(0f, 0.2f, 1f, 1f);
 
+    // ── Valores base ────────────────────────────────────────
     private float _baseChaseSpeed;
     private float _basePatrolSpeed;
     private float _baseFlySpeed;
-    private float _baseMeleeDamage;
-    private float _baseRangedDamage;
-    private float _baseFlyRangedDamage;
-    private float _baseFlyEmergencyDamage;
-    private bool  _originalValuesCaptured = false;
+
+    // ── Multiplicador de daño actual (1 = normal) ──────────
+    public float CurrentDamageScale { get; private set; } = 1f;
+
+    private bool _originalValuesCaptured = false;
 
     private void Start()
     {
@@ -51,14 +47,7 @@ public class EnemyEnergyScaledStatsComponent : MonoBehaviour
 
         if (chaseActor  != null && chaseActor.agent  != null) _baseChaseSpeed  = chaseActor.agent.speed;
         if (patrolActor != null && patrolActor.agent != null) _basePatrolSpeed = patrolActor.agent.speed;
-        if (flyingPursuitActor      != null) _baseFlySpeed           = flyingPursuitActor.speed;
-        if (meleeAttackActor        != null) _baseMeleeDamage        = meleeAttackActor.damage;
-        if (rangedAttackActor       != null) _baseRangedDamage       = rangedAttackActor.damage;
-        if (flyingRangedAttackActor != null)
-        {
-            _baseFlyRangedDamage    = flyingRangedAttackActor.damage;
-            _baseFlyEmergencyDamage = flyingRangedAttackActor.emergencyDamage;
-        }
+        if (flyingPursuitActor      != null) _baseFlySpeed = flyingPursuitActor.speed;
     }
 
     private void ApplyScaling(float normalizedEnergy)
@@ -66,6 +55,7 @@ public class EnemyEnergyScaledStatsComponent : MonoBehaviour
         if (!_originalValuesCaptured) return;
         float scale = scalingCurve.Evaluate(normalizedEnergy);
 
+        // Velocidades: se asignan directamente
         if (chaseActor  != null && chaseActor.agent  != null)
             chaseActor.agent.speed = _baseChaseSpeed * scale;
 
@@ -75,16 +65,7 @@ public class EnemyEnergyScaledStatsComponent : MonoBehaviour
         if (flyingPursuitActor != null)
             flyingPursuitActor.speed = _baseFlySpeed * scale;
 
-        if (meleeAttackActor != null)
-            meleeAttackActor.damage = _baseMeleeDamage * scale;
-
-        if (rangedAttackActor != null)
-            rangedAttackActor.damage = _baseRangedDamage * scale;
-
-        if (flyingRangedAttackActor != null)
-        {
-            flyingRangedAttackActor.damage         = _baseFlyRangedDamage   * scale;
-            flyingRangedAttackActor.emergencyDamage = _baseFlyEmergencyDamage * scale;
-        }
+        // Daño: solo actualizamos el multiplicador público
+        CurrentDamageScale = scale;
     }
 }

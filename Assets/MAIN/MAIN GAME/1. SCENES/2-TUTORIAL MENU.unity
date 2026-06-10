@@ -457,6 +457,10 @@ PrefabInstance:
       propertyPath: '_actors.Array.data[2]'
       value: 
       objectReference: {fileID: 864480730}
+    - target: {fileID: 5665317261653050597, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}
+      propertyPath: m_Constraints
+      value: 42
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

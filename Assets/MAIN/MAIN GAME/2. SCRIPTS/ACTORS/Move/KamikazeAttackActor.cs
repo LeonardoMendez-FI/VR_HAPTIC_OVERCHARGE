@@ -18,17 +18,18 @@ public class KamikazeAttackActor : ActorScript<EnemyManager>
 
     public GameObject explosionPrefab;
 
-    private float detonationRange;
-    private float damage;
-    private bool  detonating        = false;
-    private Coroutine _detonateCoroutine;
+    public float detonationRange => PlayerParameters.MEDIUM_LINEAR_SPEED
+                                 * PlayerParameters.ENEMY_MELEE_TIME
+                                 * detonationTimeMultiplier * 0.5f;
+    public float damage => PlayerParameters.ENEMY_BASE_MELEE_DAMAGE * 3f * damageMultiplier;
 
-    private void Awake()
+    private bool      detonating        = false;
+    private Coroutine _detonateCoroutine;
+    private EnemyEnergyScaledStatsComponent _scaler;
+
+    private void Start()
     {
-        detonationRange = PlayerParameters.MEDIUM_LINEAR_SPEED
-                        * PlayerParameters.ENEMY_MELEE_TIME
-                        * detonationTimeMultiplier * 0.5f;  // la mitad del rango melee
-        damage = PlayerParameters.ENEMY_BASE_MELEE_DAMAGE * 3f * damageMultiplier;
+        _scaler = GetComponentInParent<EnemyEnergyScaledStatsComponent>();
     }
 
     public override bool MeetsRequirements()
@@ -52,10 +53,13 @@ public class KamikazeAttackActor : ActorScript<EnemyManager>
     {
         yield return new WaitForSeconds(detonationDelay);
 
+        float scaledDamage = damage;
+        if (_scaler != null) scaledDamage *= _scaler.CurrentDamageScale;
+
         if (playerTarget != null)
         {
             StructManager playerStruct = playerTarget.GetComponentInParent<StructManager>();
-            playerStruct?.TakeDamage(damage, transform.position);
+            playerStruct?.TakeDamage(scaledDamage, transform.position);
         }
 
         if (playerEnergyManager != null)
