@@ -311,11 +311,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 53773851}
   m_CullTransparentMesh: 1
---- !u!54 &556349372 stripped
-Rigidbody:
-  m_CorrespondingSourceObject: {fileID: 5665317261653050597, guid: 4a5730834fe7aec40b0cdff7ec998fe9, type: 3}
-  m_PrefabInstance: {fileID: 1962093572}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &695338249
 GameObject:
   m_ObjectHideFlags: 0
@@ -782,7 +777,7 @@ MonoBehaviour:
   gazeManager: {fileID: 764339492}
   playerHUD: {fileID: 1356587733}
   playerPermissions: {fileID: 1962093573}
-  playerRigidbody: {fileID: 556349372}
+  playerRigidbody: {fileID: 0}
 --- !u!1001 &1041704071
 PrefabInstance:
   m_ObjectHideFlags: 0

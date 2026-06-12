@@ -8,9 +8,9 @@ public class FlightEnergyDrainActor : EnergyActor
     [Range(0, 3)] public float rotationCostMultiplier = 0.5f;
 
     [Header("References")]
-    public MoveManager moveManager;
+    public MoveManager       moveManager;
     public GazeEnergyDrainActor gazeDrainActor;
-    public PlayerPermissions permissions;   // Añadido
+    public PlayerPermissions permissions;
 
     private float baseDrainRate;
 
@@ -21,7 +21,6 @@ public class FlightEnergyDrainActor : EnergyActor
         if (!moveManager.isFlying || moveManager.isAttacking) return false;
         if (!permissions.flightEnergyDrainEnabled) return false;
         if (gazeDrainActor != null && gazeDrainActor.IsDraining) return false;
-
         return true;
     }
 
@@ -33,13 +32,17 @@ public class FlightEnergyDrainActor : EnergyActor
 
     public override void UpdateExecution()
     {
-        if (moveManager == null || moveManager.playerRigidbody == null) return;
+        if (moveManager == null) return;
 
-        Rigidbody rb = moveManager.playerRigidbody;
-        float linearFraction = Mathf.Clamp01(rb.linearVelocity.magnitude / moveManager.max_linear_speed);
-        float angularFraction = Mathf.Clamp01(Mathf.Abs(rb.angularVelocity.y) / moveManager.max_angular_speed);
+        // Use MoveManager's speed fractions instead of Rigidbody velocity —
+        // CharacterController does not expose a linearVelocity property.
+        float linearFraction  = moveManager.GetSpeedFraction();
+        float angularFraction = moveManager.GetAngularFraction();
 
-        float totalDrain = baseDrainRate * (1f + movementCostMultiplier * linearFraction + rotationCostMultiplier * angularFraction);
+        float totalDrain = baseDrainRate * (1f
+            + movementCostMultiplier * linearFraction
+            + rotationCostMultiplier * angularFraction);
+
         managerScript.modify_energy(-totalDrain * Time.deltaTime);
 
         if (managerScript.is_empty)

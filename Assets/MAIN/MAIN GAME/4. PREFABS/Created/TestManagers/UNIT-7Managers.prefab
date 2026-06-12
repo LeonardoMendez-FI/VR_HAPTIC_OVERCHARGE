@@ -9,9 +9,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6646787776498337101}
-  - component: {fileID: 2076491293992865974}
+  - component: {fileID: 4601643756447566116}
   m_Layer: 0
-  m_Name: GroundActor
+  m_Name: MoveActor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -32,7 +32,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8264373994727559643}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2076491293992865974
+--- !u!114 &4601643756447566116
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,14 +41,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 348015931450549372}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4b2653e365f7d774da849a1de673efe7, type: 3}
+  m_Script: {fileID: 11500000, guid: 49045cb81aa83a2438f87dda495d30fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   managerScript: {fileID: 5220023222284394945}
   linearSpeedMultiplier: 1
   angularSpeedMultiplier: 1
   permissions: {fileID: 0}
-  showDebug: 0
+  accelerationTime: 0.1
+  angularAccelerationTime: 0.1
 --- !u!1 &1137652318659003634
 GameObject:
   m_ObjectHideFlags: 0
@@ -159,7 +160,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4193867591217306826}
-  - component: {fileID: 9204437310739306351}
+  - component: {fileID: 2480932880927095168}
   m_Layer: 0
   m_Name: FlyActor
   m_TagString: Untagged
@@ -182,7 +183,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8264373994727559643}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9204437310739306351
+--- !u!114 &2480932880927095168
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -191,14 +192,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 2928446159344741360}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2893c608e5e6c3f40b40eee7638e0cbc, type: 3}
+  m_Script: {fileID: 11500000, guid: 5466deb5f92ac244f8f4f333dea22af7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   managerScript: {fileID: 5220023222284394945}
   linearSpeedMultiplier: 1
-  angularSpeedMultiplier: 0.75
+  angularSpeedMultiplier: 1
   permissions: {fileID: 0}
-  showDebug: 0
+  verticalSpeedMultiplier: 1
 --- !u!1 &3153603396798363051
 GameObject:
   m_ObjectHideFlags: 0
@@ -496,7 +497,6 @@ MonoBehaviour:
   managerScript: {fileID: 5220023222284394945}
   linearSpeedMultiplier: 1
   angularSpeedMultiplier: 1
-  jumpForceMultiplier: 1
   permissions: {fileID: 0}
 --- !u!1 &6640566148121316994
 GameObject:
@@ -784,8 +784,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MoveManager
   electronicObject: {fileID: 1186708286397018274}
   _actors:
-  - {fileID: 2076491293992865974}
-  - {fileID: 9204437310739306351}
+  - {fileID: 4601643756447566116}
+  - {fileID: 2480932880927095168}
   - {fileID: 5152059292248139187}
   OnFlightModeChanged:
     m_PersistentCalls:
@@ -797,10 +797,9 @@ MonoBehaviour:
   inputLogic: {fileID: 0}
   playerRigidbody: {fileID: 0}
   playerTransform: {fileID: 0}
-  groundLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  showDebug: 0
+  headTransform: {fileID: 0}
+  headRotationSpeed: 90
+  maxHeadPitch: 70
   isFlying: 0
   isAttacking: 0
 --- !u!1 &9190026258242061913
@@ -861,7 +860,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 192
   maxGazeDistance: 20
-  focusThreshold: 1.5
+  focusThreshold: 0.5
   decayRate: 0.6
   resetProgressOnTargetChange: 1
   stickyTargetLogic: {fileID: 5346258679991485329}

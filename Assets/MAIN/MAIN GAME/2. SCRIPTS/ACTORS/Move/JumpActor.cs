@@ -18,7 +18,6 @@ public class JumpActor : MoveActor
 
     public override bool MeetsRequirements()
     {
-        // Ahora incluye la verificación del permiso de salto
         return base.MeetsRequirements() && !moveManager.isFlying && rb != null &&
                permissions != null && permissions.canJump;
     }
@@ -29,14 +28,11 @@ public class JumpActor : MoveActor
 
         bool isGrounded = moveManager.IsGrounded();
 
-        // Solo aplicar impulso de salto si estamos en el suelo y se pulsa el botón
         if (permissions.canJump && input.JumpPressed && isGrounded)
         {
             Vector3 vel = rb.linearVelocity;
             vel.y = jumpForce;
             rb.linearVelocity = vel;
         }
-        // La gravedad la gestiona el Rigidbody (useGravity = true en tierra)
-        // No aplicamos gravedad manual para evitar conflictos
     }
 }

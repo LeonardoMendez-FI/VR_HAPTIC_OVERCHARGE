@@ -6,7 +6,7 @@ public class StartMenuRestrictions : MonoBehaviour
     public MoveManager moveManager;
     public GazeManager gazeManager;
     public PlayerHUD playerHUD;
-    public PlayerPermissions playerPermissions;   // Añadido
+    public PlayerPermissions playerPermissions;
 
     void Start()
     {
@@ -16,10 +16,21 @@ public class StartMenuRestrictions : MonoBehaviour
             return;
         }
 
+        // Solo rotación y mirada
         playerPermissions.ResetAll();
+        playerPermissions.canRotate = true;
         playerPermissions.canGaze = true;
 
-        moveManager.enabled = false;
+        // El Rigidbody debe estar activo pero no moverse
+        if (moveManager.playerRigidbody != null)
+        {
+            moveManager.playerRigidbody.linearVelocity = Vector3.zero;
+            moveManager.playerRigidbody.angularVelocity = Vector3.zero;
+            moveManager.playerRigidbody.useGravity = false;
+            moveManager.playerRigidbody.constraints = RigidbodyConstraints.FreezePosition;
+        }
+
+        moveManager.enabled = true;
         gazeManager.enabled = true;
         playerHUD.HideHUD();
     }

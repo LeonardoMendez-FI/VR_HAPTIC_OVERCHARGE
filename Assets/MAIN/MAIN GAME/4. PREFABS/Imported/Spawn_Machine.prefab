@@ -50,15 +50,17 @@ MonoBehaviour:
   - {fileID: 718128687949249508, guid: 7e635f75d303e3542b40d6fa6c8a0d20, type: 3}
   - {fileID: 478430550425256265, guid: 44fa0c6bd92badc47b5c3e02e667f926, type: 3}
   - {fileID: 8525379373233039111, guid: 010f7c19ab0a72f409383ceb1bd4a122, type: 3}
-  spawnPoint: {fileID: 7791598131993593390}
-  spawnInterval: 5
-  maxSpawnedEnemies: 2
   probabilities:
   - 0.08
   - 0.46
   - 0.64
   - 0.23
   - 0.78
+  spawnInterval: 5
+  initialDelay: 0
+  maxActiveEnemies: 3
+  spawnPoints: []
+  defaultSpawnPoint: {fileID: 7791598131993593390}
 --- !u!1 &6750653382892046114
 GameObject:
   m_ObjectHideFlags: 0
@@ -342,6 +344,14 @@ PrefabInstance:
     - target: {fileID: 4682817934444267033, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
       propertyPath: m_Name
       value: ElecObjManagers
+      objectReference: {fileID: 0}
+    - target: {fileID: 6017688873542170626, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
+      propertyPath: drainTime
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 6017688873542170626, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
+      propertyPath: useDrainTime
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6017688873542170626, guid: 6da6ee037d23b1b4a92a12d3927171dc, type: 3}
       propertyPath: electronicObject

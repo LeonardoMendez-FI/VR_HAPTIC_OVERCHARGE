@@ -1,106 +1,166 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
 
 public class SpawnService : ServiceScript
 {
-    [Header("Enemy Prefabs (up to 5)")]
-    public List<GameObject> enemyPrefabs = new List<GameObject>();
+    [Header("Enemy Prefabs (hasta 5)")]
+    public GameObject[] enemyPrefabs;   // asigna aquí los 5 prefabs
 
-    [Header("Spawn Settings")]
-    public Transform spawnPoint;
-    public float spawnInterval = 5f;
-    public int maxSpawnedEnemies = 3;
+    [Header("Spawn Probabilities (mismo orden que prefabs)")]
+    [Range(0f, 1f)] public float[] probabilities = { 0.6f, 0.3f, 0.1f, 0f, 0f };
 
-    [Header("Probabilities (normalized)")]
-    [Range(0f, 1f)] public float[] probabilities = new float[5];
+    [Header("Spawn Timing")]
+    public float spawnInterval = 3f;          // cada cuántos segundos intenta spawnear
+    public float initialDelay = 0f;           // espera antes de empezar
 
-    private float timer;
-    private List<GameObject> activeSpawned = new List<GameObject>();
+    [Header("Limits")]
+    public int maxActiveEnemies = 5;          // máximo de enemigos simultáneos
 
-    private Transform          _playerTarget;
-    private GazeManager        _playerGaze;
-    private EnergyManager      _playerEnergy;
+    [Header("Spawn Points (opcional)")]
+    public Transform[] spawnPoints;
+    public Transform defaultSpawnPoint;
+
+    // Referencias del jugador (inyectadas)
+    private Transform _playerTarget;
+    private GazeManager _playerGaze;
+    private EnergyManager _playerEnergy;
     private AttackSequenceActor _attackSeq;
     private bool _referencesReady = false;
+
+    // Estado interno
+    private readonly List<GameObject> _activeEnemies = new();
+    private bool _spawning = false;
+    private Coroutine _spawnRoutine;
 
     void Start()
     {
         NormalizeProbabilities();
-        if (spawnPoint == null) spawnPoint = transform;
+        if (defaultSpawnPoint == null) defaultSpawnPoint = transform;
     }
 
     public void SetPlayerReferences(Transform playerTarget, GazeManager playerGaze,
                                     EnergyManager playerEnergy, AttackSequenceActor attackSeq)
     {
         _playerTarget = playerTarget;
-        _playerGaze   = playerGaze;
+        _playerGaze = playerGaze;
         _playerEnergy = playerEnergy;
-        _attackSeq    = attackSeq;
+        _attackSeq = attackSeq;
         _referencesReady = (playerTarget != null && playerGaze != null && playerEnergy != null && attackSeq != null);
     }
 
-    void Update()
+    public void SetProbabilities(float[] probs)
     {
-        if (!_referencesReady) return;
-        if (activeSpawned.Count >= maxSpawnedEnemies) return;
+        probabilities = probs;
+        NormalizeProbabilities();
+    }
 
-        timer += Time.deltaTime;
-        if (timer >= spawnInterval)
+    /// <summary>
+    /// Comienza el spawn continuo.
+    /// </summary>
+    public void StartSpawning()
+    {
+        if (_spawning) return;
+        _spawning = true;
+        _spawnRoutine = StartCoroutine(SpawnLoop());
+        Debug.Log($"[SpawnService] Spawn continuo iniciado. Intervalo: {spawnInterval}s, máximo activos: {maxActiveEnemies}");
+    }
+
+    /// <summary>
+    /// Detiene el spawn (por si se necesita).
+    /// </summary>
+    public void StopSpawning()
+    {
+        _spawning = false;
+        if (_spawnRoutine != null) StopCoroutine(_spawnRoutine);
+    }
+
+    private IEnumerator SpawnLoop()
+    {
+        yield return new WaitForSeconds(initialDelay);
+
+        while (_spawning)
         {
-            timer = 0f;
-            SpawnEnemy();
+            // Limpiar enemigos muertos (por si acaso)
+            _activeEnemies.RemoveAll(e => e == null);
+
+            if (_activeEnemies.Count < maxActiveEnemies)
+            {
+                SpawnRandomEnemy();
+            }
+
+            yield return new WaitForSeconds(spawnInterval);
         }
     }
 
-    void SpawnEnemy()
+    private void SpawnRandomEnemy()
     {
-        if (enemyPrefabs.Count == 0) return;
+        if (!_referencesReady)
+        {
+            Debug.LogWarning("[SpawnService] Referencias del jugador no listas.");
+            return;
+        }
 
+        if (enemyPrefabs == null || enemyPrefabs.Length == 0)
+        {
+            Debug.LogWarning("[SpawnService] No hay prefabs asignados.");
+            return;
+        }
+
+        // Elegir un prefab según probabilidades
         int index = PickRandomIndex();
-        if (index < 0 || index >= enemyPrefabs.Count) return;
+        GameObject prefab = enemyPrefabs[index];
+        if (prefab == null) return;
 
-        Vector3 spawnPos = spawnPoint.position;
-        GameObject instance = Instantiate(enemyPrefabs[index], spawnPos, Quaternion.identity);
+        // Elegir punto de spawn
+        Transform spawnPoint = (spawnPoints != null && spawnPoints.Length > 0)
+            ? spawnPoints[Random.Range(0, spawnPoints.Length)]
+            : defaultSpawnPoint;
 
-        var refs = instance.GetComponentInChildren<EnemyReferences>();
+        if (spawnPoint == null) return;
+
+        GameObject enemy = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation);
+
+        // Inyectar referencias del jugador
+        EnemyReferences refs = enemy.GetComponent<EnemyReferences>()
+                            ?? enemy.GetComponentInChildren<EnemyReferences>();
         if (refs != null)
             refs.SetReferences(_playerTarget, _playerGaze, _playerEnergy, _attackSeq);
+        else
+            Debug.LogError($"[SpawnService] El prefab {prefab.name} no tiene EnemyReferences.", prefab);
 
-        var structMgr = instance.GetComponentInChildren<StructManager>();
-        if (structMgr != null)
+        // Registrar para control de activos
+        _activeEnemies.Add(enemy);
+
+        // Cuando el enemigo muera, quitarlo de la lista
+        StructManager enemyStruct = enemy.GetComponent<StructManager>()
+                                 ?? enemy.GetComponentInChildren<StructManager>();
+        if (enemyStruct != null)
         {
-            UnityAction destroyCallback = null;
-            destroyCallback = () =>
+            enemyStruct.OnEntityDestroyed.AddListener(() =>
             {
-                structMgr.OnEntityDestroyed.RemoveListener(destroyCallback);
-                activeSpawned.Remove(instance);
-            };
-            structMgr.OnEntityDestroyed.AddListener(destroyCallback);
+                _activeEnemies.Remove(enemy);
+                Debug.Log($"[SpawnService] Enemigo destruido. Activos: {_activeEnemies.Count}");
+            });
         }
 
-        activeSpawned.Add(instance);
+        Debug.Log($"[SpawnService] Enemigo {prefab.name} generado. Activos: {_activeEnemies.Count}");
     }
 
-    void OnEnemyDestroyed(GameObject enemy)
-    {
-        activeSpawned.Remove(enemy);
-    }
-
-    int PickRandomIndex()
+    // Selecciona un índice basado en probabilidades normalizadas
+    private int PickRandomIndex()
     {
         float roll = Random.value;
         float cumulative = 0f;
-        int lastIndex = probabilities.Length - 1;
-        for (int i = 0; i < lastIndex; i++)
+        for (int i = 0; i < probabilities.Length; i++)
         {
             cumulative += probabilities[i];
             if (roll < cumulative) return i;
         }
-        return lastIndex;
+        return probabilities.Length - 1;
     }
 
-    void NormalizeProbabilities()
+    private void NormalizeProbabilities()
     {
         float sum = 0f;
         foreach (float p in probabilities) sum += p;
@@ -109,9 +169,11 @@ public class SpawnService : ServiceScript
             probabilities[i] /= sum;
     }
 
-    public void SetProbabilities(float[] probs)
+    void OnDestroy()
     {
-        probabilities = probs;
-        NormalizeProbabilities();
+        StopSpawning();
+        foreach (var enemy in _activeEnemies)
+            if (enemy != null) Destroy(enemy);
+        _activeEnemies.Clear();
     }
 }

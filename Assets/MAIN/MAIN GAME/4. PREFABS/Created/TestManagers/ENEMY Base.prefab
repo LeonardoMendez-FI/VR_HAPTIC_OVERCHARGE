@@ -46,7 +46,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   electronicObject: {fileID: 7021428358606033435}
-  _actors: []
+  _actors:
+  - {fileID: 6462119816307846586}
 --- !u!1 &1018847973921604258
 GameObject:
   m_ObjectHideFlags: 0
@@ -56,7 +57,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8677086110496674638}
-  - component: {fileID: 118632699406354257}
+  - component: {fileID: 2139959375542142804}
   m_Layer: 0
   m_Name: ScaledEnergy
   m_TagString: Untagged
@@ -79,7 +80,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 7430219377467032432}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &118632699406354257
+--- !u!114 &2139959375542142804
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -88,16 +89,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 1018847973921604258}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 037ca1d1e1051a249bb740a6a65408d2, type: 3}
+  m_Script: {fileID: 11500000, guid: ead4d7c8a2c0bde4ea26319b9450cc99, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   energyManager: {fileID: 7005165577095010445}
-  chaseActor: {fileID: 0}
-  patrolActor: {fileID: 0}
-  flyingPursuitActor: {fileID: 0}
-  meleeAttackActor: {fileID: 0}
-  rangedAttackActor: {fileID: 0}
-  flyingRangedAttackActor: {fileID: 0}
+  groundMoveActor: {fileID: 0}
+  flightMoveActor: {fileID: 0}
+  patrolActor: {fileID: 6462119816307846586}
   scalingCurve:
     serializedVersion: 2
     m_Curve:
@@ -131,7 +129,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5611475370727523900}
-  - component: {fileID: 903731748522592039}
+  - component: {fileID: 6462119816307846586}
   m_Layer: 0
   m_Name: Patrol
   m_TagString: Untagged
@@ -154,7 +152,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 6528256611579349939}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &903731748522592039
+--- !u!114 &6462119816307846586
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -163,15 +161,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 4905620387486694590}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6531611f25bcde4197bb8f1e575da59, type: 3}
+  m_Script: {fileID: 11500000, guid: 07e8c6e3d852b3240a49f7bfd753c915, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   managerScript: {fileID: 870831864287913325}
   agent: {fileID: 0}
   playerTarget: {fileID: 0}
+  detectionTimeMultiplier: 1
   patrolRadius: 10
   waitTimeAtDestination: 2
-  detectionTimeMultiplier: 1
   linearSpeedMultiplier: 1
   angularSpeedMultiplier: 1
 --- !u!1 &7104138577022105386
@@ -232,7 +230,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3756285164509898807}
-  - component: {fileID: 7558767192664953313}
+  - component: {fileID: 4837065068599960376}
   m_Layer: 0
   m_Name: References
   m_TagString: Untagged
@@ -255,7 +253,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 7430219377467032432}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &7558767192664953313
+--- !u!114 &4837065068599960376
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -264,7 +262,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 7468812454573111147}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e08cbcfef95c4342a347ac22cdefc88, type: 3}
+  m_Script: {fileID: 11500000, guid: f1dcc1e84a3d23948a787d8b26deb72c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   enemyManager: {fileID: 870831864287913325}

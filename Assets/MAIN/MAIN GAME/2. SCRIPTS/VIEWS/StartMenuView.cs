@@ -7,7 +7,7 @@ public class StartMenuView : ViewBase
     public GazeManager gazeManager;
     public PlayerHUD playerHUD;
     public PlayerPermissions playerPermissions;
-    public Rigidbody playerRigidbody;          // ← nuevo
+    public Rigidbody playerRigidbody;
 
     void Start()
     {

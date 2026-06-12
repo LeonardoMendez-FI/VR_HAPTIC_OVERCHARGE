@@ -42,6 +42,20 @@ public class AttackEventBridge : MonoBehaviour
 
     private void HandleEnemyDestroyed()
     {
-        attackManager?.AddElimination();
+        // Solo contar eliminación si el objetivo destruido es realmente un enemigo (tiene EnemyManager)
+        bool isEnemy = false;
+        if (attackSequenceActor != null && attackSequenceActor.CurrentTarget is GazeTargetBehaviour gazeTarget)
+        {
+            if (gazeTarget.rootToDestroy != null &&
+                gazeTarget.rootToDestroy.GetComponentInChildren<EnemyManager>() != null)
+            {
+                isEnemy = true;
+            }
+        }
+
+        if (isEnemy)
+        {
+            attackManager?.AddElimination();
+        }
     }
 }

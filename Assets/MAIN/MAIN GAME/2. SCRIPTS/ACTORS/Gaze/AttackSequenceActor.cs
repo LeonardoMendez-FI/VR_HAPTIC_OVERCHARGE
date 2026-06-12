@@ -26,6 +26,9 @@ public class AttackSequenceActor : GazeActor
 
     public bool IsDraining => isAttacking;
 
+    // Propiedad pública para que AttackEventBridge pueda inspeccionar el objetivo actual
+    public IGazeTarget CurrentTarget => currentTarget;
+
     void Start()
     {
         if (drainActor != null)

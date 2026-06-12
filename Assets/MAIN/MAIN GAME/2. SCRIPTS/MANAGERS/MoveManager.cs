@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -60,51 +59,40 @@ public class MoveManager : ManagerScript
 
     public override void Update()
     {
-        // ── Ground check robusto con CheckSphere en los pies ──
+        // Ground check
         if (playerRigidbody != null)
         {
-            // Obtener la base del collider (los pies)
             Vector3 feetPosition = GetFeetPosition();
             LayerMask mask = groundLayers & ~(1 << playerRigidbody.gameObject.layer);
             _isGrounded = Physics.CheckSphere(feetPosition, 0.3f, mask);
-
-            if (showDebug)
-                Debug.Log($"[MoveManager] Grounded: {_isGrounded} (feet: {feetPosition})");
         }
         else
         {
             _isGrounded = false;
         }
 
+        // Manejar cambio de estado de ataque
         if (isAttacking != _wasAttacking)
         {
             if (isAttacking)
-                foreach (var actor in actors)
-                    actor.StopExecution();
+                foreach (var actor in actors) actor.StopExecution();
             _wasAttacking = isAttacking;
         }
+        if (isAttacking) return;
 
-        if (isAttacking)
-            return;
-
+        // Ejecutar actores
         foreach (var actor in actors)
         {
-            if (actor.MeetsRequirements())
-                actor.Solve();
-            else
-                actor.StopExecution();
+            if (actor.MeetsRequirements()) actor.Solve();
+            else actor.StopExecution();
         }
     }
 
     private Vector3 GetFeetPosition()
     {
-        Collider col = playerRigidbody.GetComponent<Collider>();
+        Collider col = playerRigidbody?.GetComponent<Collider>();
         if (col != null)
-        {
-            // Punto más bajo del collider (suela) + un pequeño offset hacia arriba para que no traspase
             return new Vector3(col.bounds.center.x, col.bounds.min.y + 0.1f, col.bounds.center.z);
-        }
-        // Fallback: posición del transform menos 1 metro (estimación)
         if (playerTransform != null)
             return playerTransform.position + Vector3.down * 0.9f;
         return playerRigidbody.position;
@@ -112,27 +100,21 @@ public class MoveManager : ManagerScript
 
     public bool IsGrounded() => _isGrounded;
 
-    public void SetAttacking(bool attacking)
-    {
-        isAttacking = attacking;
-    }
+    public void SetAttacking(bool attacking) => isAttacking = attacking;
 
     private void ActivateFlight()
     {
-        if (!isAttacking && !isFlying)
-            SetMode(true);
+        if (!isAttacking && !isFlying) SetMode(true);
     }
 
     private void ActivateGround()
     {
-        if (!isAttacking && isFlying)
-            SetMode(false);
+        if (!isAttacking && isFlying) SetMode(false);
     }
 
     public void ForceLand()
     {
-        if (isFlying)
-            SetMode(false);
+        if (isFlying) SetMode(false);
     }
 
     private void SetMode(bool flying)
@@ -147,9 +129,16 @@ public class MoveManager : ManagerScript
         }
     }
 
-    public void Move(Vector3 direction, float speed)
+    // Métodos agregados para compatibilidad con FlightEnergyDrainActor
+    public float GetSpeedFraction()
     {
-        if (playerTransform != null)
-            playerTransform.position += direction * speed * Time.deltaTime;
+        if (playerRigidbody == null) return 0f;
+        return Mathf.Clamp01(playerRigidbody.linearVelocity.magnitude / max_linear_speed);
+    }
+
+    public float GetAngularFraction()
+    {
+        if (playerRigidbody == null) return 0f;
+        return Mathf.Clamp01(Mathf.Abs(playerRigidbody.angularVelocity.y) / max_angular_speed);
     }
 }

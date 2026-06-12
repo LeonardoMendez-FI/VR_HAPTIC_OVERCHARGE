@@ -1,163 +1,283 @@
 using UnityEngine;
 using UnityEngine.Events;
 
+/// <summary>
+/// Fuente unificada de entrada para tres dispositivos:
+///
+///   1. Chaleco háptico (ESP32 via UDP)  — prioridad exclusiva cuando está conectado
+///   2. Teclado                          — activo cuando no hay háptico
+///   3. Gamepad estándar                 — activo cuando no hay háptico
+///
+/// Cuando el háptico está conectado, teclado y gamepad se ignoran completamente.
+/// Cuando el háptico no está conectado, teclado y gamepad se suman (OR).
+///
+/// ── Mapeo unificado ────────────────────────────────────────────────────────
+///
+///   Acción          Teclado          Háptico           Gamepad
+///   ──────────────────────────────────────────────────────────
+///   Mover           W/S/A/D          JS izq.           JS izq.
+///   Rotar/Cabeza    Flechas          JS der.           JS der.
+///   Botón izq.      Tab              Btn izq.          L3 / LT
+///   Botón der.      Space            Btn der.          R3 / RT
+///   Vuelo           Space x2         Btn der. x2       R3 x2
+///   Aterrizar       Tab x2           Btn izq. x2       L3 x2
+///
+/// Campos públicos de salida (leídos por actores y vistas):
+///   LeftJoystickRaw  — Vector2 (x=strafe, y=forward)
+///   RightJoystickRaw — Vector2 (x=rotation, y=pitch)
+///   LeftButtonHeld   — Tab / BtnIzq / L3 o LT
+///   RightButtonHeld  — Space / BtnDer / R3 o RT
+///   JumpPressed      — primer frame del RightButton
+///   W, S, A, D       — bools derivados de LeftJoystickRaw
+///   UpArrow, DownArrow, LeftArrow, RightArrow — bools derivados de RightJoystickRaw
+/// </summary>
 public class InputLogic : MonoBehaviour
 {
-    [Header("Haptic Service (opcional)")]
+    // ── Referencias ─────────────────────────────────────────────────────────
+
+    [Header("Háptico (opcional — prioridad exclusiva si conectado)")]
     public HapticService hapticService;
 
-    [Header("Permissions")]
+    [Header("Permisos")]
     public PlayerPermissions permissions;
 
-    [Header("Detección de doble pulsación")]
+    // ── Configuración ────────────────────────────────────────────────────────
+
+    [Header("Doble pulsación")]
     public float doubleTapThreshold = 0.3f;
 
-    [Header("Eventos de cambio de modo")]
+    [Header("Teclado — teclas configurables")]
+    public KeyCode keyForward  = KeyCode.W;
+    public KeyCode keyBack     = KeyCode.S;
+    public KeyCode keyLeft     = KeyCode.A;
+    public KeyCode keyRight    = KeyCode.D;
+    public KeyCode keyRotLeft  = KeyCode.LeftArrow;
+    public KeyCode keyRotRight = KeyCode.RightArrow;
+    public KeyCode keyLookUp   = KeyCode.UpArrow;
+    public KeyCode keyLookDown = KeyCode.DownArrow;
+    public KeyCode keyLeftBtn  = KeyCode.Tab;
+    public KeyCode keyRightBtn = KeyCode.Space;
+
+    [Header("Gamepad — umbrales")]
+    [Tooltip("Umbral de joystick para considerar movimiento (gamepad).")]
+    [Range(0.05f, 0.5f)] public float gamepadDeadzone = 0.15f;
+    [Tooltip("Umbral de gatillo para usarlo como botón (fallback si no hay botón en joystick).")]
+    [Range(0.3f, 0.9f)]  public float triggerThreshold = 0.5f;
+
+    // ── Eventos ──────────────────────────────────────────────────────────────
+
+    [Header("Eventos de modo de vuelo")]
     public UnityEvent OnFlightRequested;
     public UnityEvent OnLandRequested;
 
-    [Header("Teclas (fallback sin Haptic)")]
-    public KeyCode forwardKey1 = KeyCode.W;
-    public KeyCode backwardKey1 = KeyCode.S;
-    public KeyCode leftKey1 = KeyCode.A;
-    public KeyCode rightKey1 = KeyCode.D;
-    public KeyCode forwardKey2 = KeyCode.UpArrow;
-    public KeyCode backwardKey2 = KeyCode.DownArrow;
-    public KeyCode leftKey2 = KeyCode.LeftArrow;
-    public KeyCode rightKey2 = KeyCode.RightArrow;
-    public KeyCode ascendKey = KeyCode.Return;
-    public KeyCode descendKey = KeyCode.Tab;
-    public KeyCode jumpKey = KeyCode.Space;
+    // ── Salidas (leídas por actores y vistas) ────────────────────────────────
 
-    [HideInInspector] public Vector2 LeftJoystickRaw;
-    [HideInInspector] public Vector2 RightJoystickRaw;
+    [HideInInspector] public Vector2 LeftJoystickRaw;   // (strafe X, forward Y)
+    [HideInInspector] public Vector2 RightJoystickRaw;  // (rotation X, pitch Y)
+
     [HideInInspector] public bool LeftButtonHeld;
     [HideInInspector] public bool RightButtonHeld;
-    [HideInInspector] public bool JumpPressed;
+    [HideInInspector] public bool JumpPressed;          // primer frame RightButton
 
-    [HideInInspector] public bool W, A, S, D;
+    // Bools derivados de los joysticks (compatibilidad con actores existentes)
+    [HideInInspector] public bool W, S, A, D;
     [HideInInspector] public bool UpArrow, DownArrow, LeftArrow, RightArrow;
 
-    private bool prevLeftButton = false;
-    private bool prevRightButton = false;
-    private bool prevLeftForTap = false;
-    private bool prevRightForTap = false;
+    // ── Estado interno ───────────────────────────────────────────────────────
 
-    private float lastFlightTapTime = -10f;
-    private float lastLandTapTime = -10f;
+    private bool _prevRightBtn;
+    private bool _prevLeftBtn;
+
+    // Para doble tap (edge detection sobre rising edge del botón)
+    private bool _prevRightEdge;
+    private bool _prevLeftEdge;
+    private float _lastRightTapTime = -10f;
+    private float _lastLeftTapTime  = -10f;
+
+    // ── Unity ────────────────────────────────────────────────────────────────
 
     void Update()
     {
         if (hapticService != null && hapticService.IsConnected)
-            ReadHapticInput();
+            ReadHaptic();
         else
-            ReadKeyboardInput();
+            ReadKeyboardAndGamepad();
 
+        DeriveBools();
         DetectDoubleTaps();
 
-        prevRightButton = RightButtonHeld;
-        prevLeftButton = LeftButtonHeld;
+        _prevRightBtn = RightButtonHeld;
+        _prevLeftBtn  = LeftButtonHeld;
     }
 
-    void ReadHapticInput()
+    // ── Lecturas de fuente ───────────────────────────────────────────────────
+
+    /// <summary>Háptico: prioridad exclusiva.</summary>
+    private void ReadHaptic()
     {
         LeftJoystickRaw  = hapticService.LeftJoystick;
         RightJoystickRaw = hapticService.RightJoystick;
-
-        W = LeftJoystickRaw.y > 0.3f;
-        S = LeftJoystickRaw.y < -0.3f;
-        A = LeftJoystickRaw.x < -0.3f;
-        D = LeftJoystickRaw.x > 0.3f;
-        UpArrow    = RightJoystickRaw.y > 0.3f;
-        DownArrow  = RightJoystickRaw.y < -0.3f;
-        LeftArrow  = RightJoystickRaw.x < -0.3f;
-        RightArrow = RightJoystickRaw.x > 0.3f;
-
-        LeftButtonHeld  = hapticService.LeftButton;
-        RightButtonHeld = hapticService.RightButton;
-
-        JumpPressed = RightButtonHeld && !prevRightButton;
+        LeftButtonHeld   = hapticService.LeftButton;
+        RightButtonHeld  = hapticService.RightButton;
+        JumpPressed      = RightButtonHeld && !_prevRightBtn;
     }
 
-    void ReadKeyboardInput()
+    /// <summary>Teclado y gamepad combinados (OR). Activo cuando el háptico no está.</summary>
+    private void ReadKeyboardAndGamepad()
     {
-        W = Input.GetKey(forwardKey1);
-        S = Input.GetKey(backwardKey1);
-        A = Input.GetKey(leftKey1);
-        D = Input.GetKey(rightKey1);
-        UpArrow    = Input.GetKey(forwardKey2);
-        DownArrow  = Input.GetKey(backwardKey2);
-        LeftArrow  = Input.GetKey(leftKey2);
-        RightArrow = Input.GetKey(rightKey2);
+        // ── Teclado ──────────────────────────────────────────────────────────
+        float kMoveX = (Input.GetKey(keyRight)    ? 1f : 0f) - (Input.GetKey(keyLeft)     ? 1f : 0f);
+        float kMoveY = (Input.GetKey(keyForward)   ? 1f : 0f) - (Input.GetKey(keyBack)     ? 1f : 0f);
+        float kRotX  = (Input.GetKey(keyRotRight)  ? 1f : 0f) - (Input.GetKey(keyRotLeft)  ? 1f : 0f);
+        float kRotY  = (Input.GetKey(keyLookUp)    ? 1f : 0f) - (Input.GetKey(keyLookDown) ? 1f : 0f);
 
-        LeftJoystickRaw  = new Vector2((D ? 1 : 0) - (A ? 1 : 0), (W ? 1 : 0) - (S ? 1 : 0));
-        RightJoystickRaw = new Vector2((RightArrow ? 1 : 0) - (LeftArrow ? 1 : 0),
-                                       (UpArrow ? 1 : 0) - (DownArrow ? 1 : 0));
+        bool kLeftBtn  = Input.GetKey(keyLeftBtn);
+        bool kRightBtn = Input.GetKey(keyRightBtn);
 
-        LeftButtonHeld  = Input.GetKey(descendKey);
-        RightButtonHeld = Input.GetKey(ascendKey) || Input.GetKey(jumpKey);
-        JumpPressed      = Input.GetKeyDown(jumpKey);
+        // ── Gamepad (legacy Input — sin New Input System) ─────────────────
+        // Unity mapea el primer gamepad conectado en los ejes nombrados.
+        // Nombres estándar en el sistema legacy:
+        //   "Horizontal"  / "Vertical"  → JS izq.
+        //   "RightStickHorizontal" / "RightStickVertical" → JS der.
+        //   "joystick button 8"  → L3
+        //   "joystick button 9"  → R3
+        //   "joystick button 14" → L3 (PS4/PS5 via legacy)  
+        //   "joystick button 15" → R3 (PS4/PS5 via legacy)
+        //   Axis 8 / Axis 9  → LT / RT
+        //
+        // Se detecta automáticamente si hay gamepad activo comparando magnitud del eje.
+        float gMoveX = Input.GetAxisRaw("Horizontal");
+        float gMoveY = Input.GetAxisRaw("Vertical");
+        float gRotX  = GetRightStickX();
+        float gRotY  = GetRightStickY();
+
+        // Botones del joystick (L3 / R3) con fallback a gatillos
+        bool gLeftBtn  = ReadLeftGamepadButton();
+        bool gRightBtn = ReadRightGamepadButton();
+
+        // ── Combinar (OR / max) ───────────────────────────────────────────
+        // Para ejes: se usa el que tenga mayor magnitud absoluta.
+        float finalMoveX = AbsMax(kMoveX, ApplyDeadzone(gMoveX));
+        float finalMoveY = AbsMax(kMoveY, ApplyDeadzone(gMoveY));
+        float finalRotX  = AbsMax(kRotX,  ApplyDeadzone(gRotX));
+        float finalRotY  = AbsMax(kRotY,  ApplyDeadzone(gRotY));
+
+        LeftJoystickRaw  = new Vector2(finalMoveX, finalMoveY);
+        RightJoystickRaw = new Vector2(finalRotX,  finalRotY);
+
+        LeftButtonHeld  = kLeftBtn  || gLeftBtn;
+        RightButtonHeld = kRightBtn || gRightBtn;
+
+        // JumpPressed = primer frame en que RightButton pasa de false a true
+        JumpPressed = RightButtonHeld && !_prevRightBtn;
     }
 
-    void DetectDoubleTaps()
+    // ── Helpers de gamepad (legacy Input) ────────────────────────────────────
+
+    private float GetRightStickX()
     {
-        if (hapticService != null && hapticService.IsConnected)
+        // Unity 2019+ legacy: "RightStickHorizontal" si el eje está configurado en Input Manager.
+        // Si no está en el proyecto, cae a 0 silenciosamente con try/catch.
+        try   { return Input.GetAxisRaw("RightStickHorizontal"); }
+        catch { return 0f; }
+    }
+
+    private float GetRightStickY()
+    {
+        try   { return Input.GetAxisRaw("RightStickVertical"); }
+        catch { return 0f; }
+    }
+
+    private bool ReadLeftGamepadButton()
+    {
+        // L3 en la mayoría de gamepads
+        if (Input.GetKey("joystick button 8"))  return true;   // XInput L3
+        if (Input.GetKey("joystick button 10")) return true;   // legacy alternativo
+        // Fallback: gatillo izquierdo
+        float lt = GetAxis("3");   // Axis 3 = LT en XInput legacy
+        return lt > triggerThreshold;
+    }
+
+    private bool ReadRightGamepadButton()
+    {
+        // R3
+        if (Input.GetKey("joystick button 9"))  return true;   // XInput R3
+        if (Input.GetKey("joystick button 11")) return true;   // legacy alternativo
+        // Fallback: gatillo derecho
+        float rt = GetAxis("4");   // Axis 4 = RT en XInput legacy (varía por plataforma)
+        return rt > triggerThreshold;
+    }
+
+    private float GetAxis(string axisName)
+    {
+        try   { return Input.GetAxisRaw("Axis " + axisName); }
+        catch { return 0f; }
+    }
+
+    // ── Derivar bools desde joysticks ────────────────────────────────────────
+
+    private void DeriveBools()
+    {
+        W = LeftJoystickRaw.y  >  gamepadDeadzone;
+        S = LeftJoystickRaw.y  < -gamepadDeadzone;
+        A = LeftJoystickRaw.x  < -gamepadDeadzone;
+        D = LeftJoystickRaw.x  >  gamepadDeadzone;
+
+        RightArrow = RightJoystickRaw.x >  gamepadDeadzone;
+        LeftArrow  = RightJoystickRaw.x < -gamepadDeadzone;
+        UpArrow    = RightJoystickRaw.y >  gamepadDeadzone;
+        DownArrow  = RightJoystickRaw.y < -gamepadDeadzone;
+    }
+
+    // ── Doble tap ────────────────────────────────────────────────────────────
+
+    private void DetectDoubleTaps()
+    {
+        // Rising edge del botón derecho → vuelo
+        bool rightEdge = RightButtonHeld && !_prevRightEdge;
+        if (rightEdge)
         {
-            bool rightEdge = RightButtonHeld && !prevRightForTap;
-            bool leftEdge = LeftButtonHeld && !prevLeftForTap;
-
-            if (rightEdge)
+            if (Time.time - _lastRightTapTime <= doubleTapThreshold)
             {
-                if (Time.time - lastFlightTapTime <= doubleTapThreshold)
-                {
-                    if (permissions == null || permissions.canToggleFlight)
-                        OnFlightRequested?.Invoke();
-                    lastFlightTapTime = -10f;
-                }
-                else
-                    lastFlightTapTime = Time.time;
+                if (permissions == null || permissions.canToggleFlight)
+                    OnFlightRequested?.Invoke();
+                _lastRightTapTime = -10f;   // consumir para no re-disparar
             }
-
-            if (leftEdge)
+            else
             {
-                if (Time.time - lastLandTapTime <= doubleTapThreshold)
-                {
-                    if (permissions == null || permissions.canLand)
-                        OnLandRequested?.Invoke();
-                    lastLandTapTime = -10f;
-                }
-                else
-                    lastLandTapTime = Time.time;
+                _lastRightTapTime = Time.time;
             }
-
-            prevRightForTap = RightButtonHeld;
-            prevLeftForTap = LeftButtonHeld;
         }
-        else
+        _prevRightEdge = RightButtonHeld;
+
+        // Rising edge del botón izquierdo → aterrizar
+        bool leftEdge = LeftButtonHeld && !_prevLeftEdge;
+        if (leftEdge)
         {
-            if (Input.GetKeyDown(ascendKey))
+            if (Time.time - _lastLeftTapTime <= doubleTapThreshold)
             {
-                if (Time.time - lastFlightTapTime <= doubleTapThreshold)
-                {
-                    if (permissions == null || permissions.canToggleFlight)
-                        OnFlightRequested?.Invoke();
-                    lastFlightTapTime = -10f;
-                }
-                else
-                    lastFlightTapTime = Time.time;
+                if (permissions == null || permissions.canLand)
+                    OnLandRequested?.Invoke();
+                _lastLeftTapTime = -10f;
             }
-
-            if (Input.GetKeyDown(descendKey))
+            else
             {
-                if (Time.time - lastLandTapTime <= doubleTapThreshold)
-                {
-                    if (permissions == null || permissions.canLand)
-                        OnLandRequested?.Invoke();
-                    lastLandTapTime = -10f;
-                }
-                else
-                    lastLandTapTime = Time.time;
+                _lastLeftTapTime = Time.time;
             }
         }
+        _prevLeftEdge = LeftButtonHeld;
+    }
+
+    // ── Utilidades ───────────────────────────────────────────────────────────
+
+    private float ApplyDeadzone(float value)
+    {
+        return Mathf.Abs(value) >= gamepadDeadzone ? value : 0f;
+    }
+
+    /// <summary>Devuelve el valor con mayor magnitud absoluta, preservando signo.</summary>
+    private float AbsMax(float a, float b)
+    {
+        return Mathf.Abs(a) >= Mathf.Abs(b) ? a : b;
     }
 }
